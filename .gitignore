@@ -7,7 +7,7 @@
 .env.backup
 .env.production
 .phpunit.result.cache
-database/dsm.sqlite
+database/*.sqlite
 Homestead.json
 Homestead.yaml
 auth.json
@@ -16,3 +16,6 @@ yarn-error.log
 /.fleet
 /.idea
 /.vscode
+/storage/framework/cache
+/storage/framework/sessions
+/storage/framework/views

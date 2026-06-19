@@ -1,9 +1,9 @@
 {
     "$schema": "https://getcomposer.org/schema.json",
-    "name": "laravel/laravel",
+    "name": "dsm/marketing-intelligence",
     "type": "project",
-    "description": "The skeleton application for the Laravel framework.",
-    "keywords": ["laravel", "framework"],
+    "description": "DSM Marketing Intelligence Platform — DTHREE, HURIM, ASFARA",
+    "keywords": ["laravel", "marketing", "dashboard"],
     "license": "MIT",
     "require": {
         "php": "^8.3",
@@ -60,7 +60,6 @@
         ],
         "post-create-project-cmd": [
             "@php artisan key:generate --ansi",
-            "@php -r \"file_exists('database/database.sqlite') || touch('database/database.sqlite');\"",
             "@php artisan migrate --graceful --ansi"
         ],
         "pre-package-uninstall": [
