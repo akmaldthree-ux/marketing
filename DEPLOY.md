@@ -48,26 +48,24 @@ Pastikan hosting sudah mendukung:
 1. Buka **cPanel → MySQL Databases**
 
 2. **Buat Database Baru:**
-   - Nama database: `dsm` → klik **Create Database**
-   - Nama lengkap: `dthreeco_dsm`
+   - Nama database: `marketing` → klik **Create Database**
+   - Nama lengkap otomatis: `dthreeco_marketing`
 
-3. **Buat User Database:**
-   - Scroll ke bagian **MySQL Users**
-   - Username: `dsmuser` → klik **Create User**
-   - Nama lengkap: `dthreeco_dsmuser`
-   - Gunakan password yang kuat, **simpan password ini**
+3. **Buat User Database** (atau gunakan user yang sudah ada):
+   - Jika belum ada user `dthreeco_root`, buat di bagian **MySQL Users**
+   - Gunakan password yang kuat dan **simpan baik-baik**
 
 4. **Tambahkan User ke Database:**
    - Scroll ke **Add User to Database**
-   - Pilih user: `dthreeco_dsmuser`
-   - Pilih database: `dthreeco_dsm`
+   - Pilih user: `dthreeco_root`
+   - Pilih database: `dthreeco_marketing`
    - Klik **Add** → centang **ALL PRIVILEGES** → **Make Changes**
 
-Catat informasi ini untuk langkah berikutnya:
+Informasi database yang akan digunakan:
 ```
-DB_DATABASE = dthreeco_dsm
-DB_USERNAME = dthreeco_dsmuser
-DB_PASSWORD = (password yang dibuat tadi)
+DB_DATABASE = dthreeco_marketing
+DB_USERNAME = dthreeco_root
+DB_PASSWORD = (password database kamu)
 ```
 
 ---
@@ -117,10 +115,10 @@ cp .env.example .env
 nano .env
 ```
 
-Ubah isian berikut (gunakan data dari Langkah 2):
+Ubah isian berikut sesuai data server kamu:
 
 ```env
-APP_NAME="DSM Marketing Intelligence"
+APP_NAME="DSM Marketing Intelligence Platform"
 APP_ENV=production
 APP_KEY=
 APP_DEBUG=false
@@ -129,11 +127,12 @@ APP_URL=https://marketing.dthree.co.id
 DB_CONNECTION=mysql
 DB_HOST=127.0.0.1
 DB_PORT=3306
-DB_DATABASE=dthreeco_dsm
-DB_USERNAME=dthreeco_dsmuser
-DB_PASSWORD=password_anda_disini
+DB_DATABASE=dthreeco_marketing
+DB_USERNAME=dthreeco_root
+DB_PASSWORD=isi_password_database_disini
 
 SESSION_DRIVER=file
+SESSION_LIFETIME=120
 CACHE_STORE=file
 QUEUE_CONNECTION=sync
 ```
