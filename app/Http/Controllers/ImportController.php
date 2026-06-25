@@ -273,6 +273,8 @@ class ImportController extends Controller
 
     // ── File Parser (CSV + XLSX) ──────────────────────────────────────────────
 
+    public function parseFilePublic($file): array { return $this->parseFile($file); }
+
     private function parseFile($file): array
     {
         $ext = strtolower($file->getClientOriginalExtension());

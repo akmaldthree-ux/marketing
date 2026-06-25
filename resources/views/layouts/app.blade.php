@@ -53,11 +53,11 @@ body{background:#f5f6fa;font-family:'Segoe UI',sans-serif;}
     <a href="{{ route('customers') }}" class="nav-link {{ request()->routeIs('customers') ? 'active' : '' }}"><i class="bi bi-people"></i> Customer</a>
     <a href="{{ route('store-compare') }}" class="nav-link {{ request()->routeIs('store-compare') ? 'active' : '' }}"><i class="bi bi-columns-gap"></i> Perbandingan Toko</a>
     <a href="{{ route('product-analysis') }}" class="nav-link {{ request()->routeIs('product-analysis') ? 'active' : '' }}"><i class="bi bi-box-seam"></i> Analisis Produk</a>
+    <div class="nav-label mt-2">Perencanaan</div>
+    <a href="{{ route('forecast') }}" class="nav-link {{ request()->routeIs('forecast') ? 'active' : '' }}"><i class="bi bi-magic"></i> Forecasting Produk</a>
     <div class="nav-label mt-2">Upload</div>
     <a href="{{ route('upload.index') }}" class="nav-link {{ request()->routeIs('upload.*') ? 'active' : '' }}"><i class="bi bi-cloud-upload"></i> Upload Data</a>
     @if(auth()->user()->isAdmin())
-    <div class="nav-label mt-2">Perencanaan</div>
-    <a href="{{ route('forecast') }}" class="nav-link {{ request()->routeIs('forecast') ? 'active' : '' }}"><i class="bi bi-magic"></i> Forecasting Produk</a>
     <div class="nav-label mt-2">Master Data</div>
     <a href="{{ route('stores.index') }}" class="nav-link {{ request()->routeIs('stores.*') ? 'active' : '' }}"><i class="bi bi-shop"></i> Toko</a>
     <a href="{{ route('pics.index') }}" class="nav-link {{ request()->routeIs('pics.*') ? 'active' : '' }}"><i class="bi bi-person-badge"></i> PIC</a>
@@ -65,6 +65,7 @@ body{background:#f5f6fa;font-family:'Segoe UI',sans-serif;}
     <a href="{{ route('targets.index') }}" class="nav-link {{ request()->routeIs('targets.*') ? 'active' : '' }}"><i class="bi bi-bullseye"></i> Target GMV</a>
     <a href="{{ route('cogs.index') }}" class="nav-link {{ request()->routeIs('cogs.*') ? 'active' : '' }}"><i class="bi bi-tag"></i> HPP / COG</a>
     <a href="{{ route('funnel-targets.index') }}" class="nav-link {{ request()->routeIs('funnel-targets.*') ? 'active' : '' }}"><i class="bi bi-sliders"></i> Target Funnel</a>
+    <a href="{{ route('products.index') }}" class="nav-link {{ request()->routeIs('products.*') ? 'active' : '' }}"><i class="bi bi-collection"></i> Master Produk</a>
     @endif
   </nav>
   <div class="p-3 border-top" style="border-color:rgba(255,255,255,.08)!important;">

@@ -22,16 +22,17 @@ class ProductAnalysisController extends Controller
 
         $gmvStatuses = Order::gmvStatuses();
 
-        // Top SKU by GMV
+        // Top SKU by GMV — pakai canonical_name dari products master jika ada
         $skuQuery = DB::table('orders as o')
             ->leftJoin('cogs as c', 'o.product_sku', '=', 'c.product_sku')
+            ->leftJoin('products as p', 'o.product_sku', '=', 'p.product_sku')
             ->whereIn('o.status', $gmvStatuses)
             ->whereBetween('o.order_date', [$start, $end])
             ->whereNotNull('o.product_sku')
             ->where('o.product_sku', '!=', '-')
             ->selectRaw("
                 o.product_sku,
-                MAX(o.product_name) as product_name,
+                COALESCE(MAX(p.canonical_name), MAX(o.product_name)) as product_name,
                 SUM(o.qty) as total_qty,
                 SUM(o.gmv) as total_gmv,
                 COUNT(*) as total_orders,

@@ -33,14 +33,15 @@ class ForecastController extends Controller
                 ->whereBetween('order_date', [$histStart->toDateString(), $histEnd->toDateString()])
                 ->whereNotNull('product_sku')
                 ->where('product_sku', '!=', '-')
+                ->leftJoin('products as p', 'orders.product_sku', '=', 'p.product_sku')
                 ->selectRaw("
-                    product_sku,
-                    MAX(product_name) as product_name,
-                    SUM(qty) as total_qty,
-                    SUM(gmv) as total_gmv,
-                    AVG(gmv / NULLIF(qty,0)) as avg_unit_price
+                    orders.product_sku,
+                    COALESCE(MAX(p.canonical_name), MAX(orders.product_name)) as product_name,
+                    SUM(orders.qty) as total_qty,
+                    SUM(orders.gmv) as total_gmv,
+                    AVG(orders.gmv / NULLIF(orders.qty,0)) as avg_unit_price
                 ")
-                ->groupByRaw('product_sku')
+                ->groupByRaw('orders.product_sku')
                 ->orderByDesc('total_qty')
                 ->get();
         }
@@ -106,8 +107,9 @@ class ForecastController extends Controller
                 ->whereBetween('order_date', [$histStart->toDateString(), $histEnd->toDateString()])
                 ->whereNotNull('product_sku')
                 ->where('product_sku', '!=', '-')
-                ->selectRaw("product_sku, MAX(product_name) as product_name, SUM(qty) as total_qty, SUM(gmv) as total_gmv")
-                ->groupByRaw('product_sku')
+                ->leftJoin('products as p', 'orders.product_sku', '=', 'p.product_sku')
+                ->selectRaw("orders.product_sku, COALESCE(MAX(p.canonical_name), MAX(orders.product_name)) as product_name, SUM(orders.qty) as total_qty, SUM(orders.gmv) as total_gmv")
+                ->groupByRaw('orders.product_sku')
                 ->orderByDesc('total_qty')
                 ->get();
         }

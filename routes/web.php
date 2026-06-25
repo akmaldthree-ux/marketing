@@ -6,7 +6,7 @@ use App\Http\Controllers\{
     FunnelTargetController, DailySalesController, RoasController,
     PnlController, FunnelController, CustomerController, SettingsController,
     StoreCompareController, ProductAnalysisController, ExportController,
-    ImportController, ForecastController
+    ImportController, ForecastController, ProductController
 };
 
 Route::middleware('guest')->group(function () {
@@ -28,6 +28,10 @@ Route::middleware('auth')->group(function () {
     Route::get('/customers', [CustomerController::class, 'index'])->name('customers');
     Route::get('/store-compare', [StoreCompareController::class, 'index'])->name('store-compare');
     Route::get('/product-analysis', [ProductAnalysisController::class, 'index'])->name('product-analysis');
+
+    // Forecast (semua role)
+    Route::get('/forecast', [ForecastController::class, 'index'])->name('forecast');
+    Route::get('/forecast/export', [ForecastController::class, 'export'])->name('forecast.export');
 
     // Export CSV
     Route::get('/export/targets', [ExportController::class, 'targets'])->name('export.targets');
@@ -58,9 +62,13 @@ Route::middleware('auth')->group(function () {
         Route::resource('cogs', CogController::class)->except(['show']);
         Route::resource('funnel-targets', FunnelTargetController::class)->except(['show']);
 
-        // Forecast (admin only)
-        Route::get('/forecast', [ForecastController::class, 'index'])->name('forecast');
-        Route::get('/forecast/export', [ForecastController::class, 'export'])->name('forecast.export');
+        // Master Produk (admin only CRUD)
+        Route::get('/products', [ProductController::class, 'index'])->name('products.index');
+        Route::post('/products', [ProductController::class, 'store'])->name('products.store');
+        Route::put('/products/{product}', [ProductController::class, 'update'])->name('products.update');
+        Route::delete('/products/{product}', [ProductController::class, 'destroy'])->name('products.destroy');
+        Route::post('/products/import', [ProductController::class, 'importProducts'])->name('products.import');
+        Route::get('/products/template', [ProductController::class, 'templateProducts'])->name('products.template');
 
         // Import routes
         Route::post('/import/target-gmv', [ImportController::class, 'importTargetGmv'])->name('import.target-gmv');

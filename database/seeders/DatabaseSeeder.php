@@ -3,7 +3,7 @@ namespace Database\Seeders;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
-use App\Models\{User, Pic, Store, FunnelTarget, Target, Cog};
+use App\Models\{User, Pic, Store, FunnelTarget, Target, Cog, Product};
 use Carbon\Carbon;
 
 class DatabaseSeeder extends Seeder {
@@ -68,6 +68,22 @@ class DatabaseSeeder extends Seeder {
                     ['gmv_target'=>(int)($base*$mult/12)]
                 );
             }
+        }
+
+        // ── Master Produk ─────────────────────────────────────────────────────
+        $productData = [
+            ['product_sku'=>'DTH-001','canonical_name'=>'Gamis Syar\'i Premium',        'brand'=>'DTHREE','category'=>'Gamis'],
+            ['product_sku'=>'DTH-002','canonical_name'=>'Mukena Travel Bordir',          'brand'=>'DTHREE','category'=>'Mukena'],
+            ['product_sku'=>'DTH-003','canonical_name'=>'Hijab Segi Empat Voal',         'brand'=>'DTHREE','category'=>'Hijab'],
+            ['product_sku'=>'HRM-001','canonical_name'=>'Sarimbit Couple Batik Premium', 'brand'=>'HURIM', 'category'=>'Sarimbit'],
+            ['product_sku'=>'HRM-002','canonical_name'=>'Baju Koko Hurim Classic',       'brand'=>'HURIM', 'category'=>'Koko'],
+            ['product_sku'=>'HRM-003','canonical_name'=>'Sarung Tenun Eksklusif',        'brand'=>'HURIM', 'category'=>'Sarung'],
+            ['product_sku'=>'ASF-001','canonical_name'=>'Gamis Anak Asfara Motif',       'brand'=>'ASFARA','category'=>'Gamis Anak'],
+            ['product_sku'=>'ASF-002','canonical_name'=>'Setelan Anak Muslim Premium',   'brand'=>'ASFARA','category'=>'Setelan Anak'],
+            ['product_sku'=>'ASF-003','canonical_name'=>'Mukena Anak Bordir',            'brand'=>'ASFARA','category'=>'Mukena Anak'],
+        ];
+        foreach ($productData as $pd) {
+            Product::updateOrCreate(['product_sku'=>$pd['product_sku']], array_merge($pd, ['is_active'=>true]));
         }
 
         // ── COGs (HPP per produk) ─────────────────────────────────────────────
