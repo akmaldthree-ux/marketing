@@ -97,7 +97,10 @@
                                 @elseif($log->status === 'processing')
                                     <span class="badge bg-warning text-dark">Proses</span>
                                 @else
-                                    <span class="badge bg-danger">Gagal</span>
+                                    <span class="badge bg-danger" @if($log->error_message) title="{{ $log->error_message }}" data-bs-toggle="tooltip" @endif>Gagal</span>
+                                    @if($log->error_message)
+                                    <div class="text-danger mt-1" style="font-size:0.68rem;max-width:200px;">{{ Str::limit($log->error_message, 80) }}</div>
+                                    @endif
                                 @endif
                             </td>
                             <td style="font-size:0.78rem;" class="text-muted">{{ \Carbon\Carbon::parse($log->uploaded_at)->diffForHumans() }}</td>
