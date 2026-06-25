@@ -3,7 +3,7 @@ namespace App\Http\Controllers;
 
 use App\Models\{Store, Order};
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\{DB, Schema};
 use Carbon\Carbon;
 
 class ProductAnalysisController extends Controller
@@ -23,16 +23,21 @@ class ProductAnalysisController extends Controller
         $gmvStatuses = Order::gmvStatuses();
 
         // Top SKU by GMV — pakai canonical_name dari products master jika ada
+        $hasProducts = Schema::hasTable('products');
         $skuQuery = DB::table('orders as o')
-            ->leftJoin('cogs as c', 'o.product_sku', '=', 'c.product_sku')
-            ->leftJoin('products as p', 'o.product_sku', '=', 'p.product_sku')
+            ->leftJoin('cogs as c', 'o.product_sku', '=', 'c.product_sku');
+        if ($hasProducts) $skuQuery->leftJoin('products as p', 'o.product_sku', '=', 'p.product_sku');
+        $nameExpr = $hasProducts
+            ? "COALESCE(MAX(p.canonical_name), MAX(o.product_name))"
+            : "MAX(o.product_name)";
+        $skuQuery
             ->whereIn('o.status', $gmvStatuses)
             ->whereBetween('o.order_date', [$start, $end])
             ->whereNotNull('o.product_sku')
             ->where('o.product_sku', '!=', '-')
             ->selectRaw("
                 o.product_sku,
-                COALESCE(MAX(p.canonical_name), MAX(o.product_name)) as product_name,
+                {$nameExpr} as product_name,
                 SUM(o.qty) as total_qty,
                 SUM(o.gmv) as total_gmv,
                 COUNT(*) as total_orders,

@@ -27,16 +27,21 @@ class ForecastController extends Controller
         // Ambil data histori penjualan per SKU
         $histRows = collect();
         if (!empty($storeIds)) {
-            $histRows = DB::table('orders')
-                ->whereIn('store_id', $storeIds)
-                ->whereIn('status', Order::gmvStatuses())
-                ->whereBetween('order_date', [$histStart->toDateString(), $histEnd->toDateString()])
-                ->whereNotNull('product_sku')
-                ->where('product_sku', '!=', '-')
-                ->leftJoin('products as p', 'orders.product_sku', '=', 'p.product_sku')
+            $hasProducts = \Illuminate\Support\Facades\Schema::hasTable('products');
+            $q = DB::table('orders');
+            if ($hasProducts) $q->leftJoin('products as p', 'orders.product_sku', '=', 'p.product_sku');
+            $nameExpr = $hasProducts
+                ? "COALESCE(MAX(p.canonical_name), MAX(orders.product_name))"
+                : "MAX(orders.product_name)";
+            $histRows = $q
+                ->whereIn('orders.store_id', $storeIds)
+                ->whereIn('orders.status', Order::gmvStatuses())
+                ->whereBetween('orders.order_date', [$histStart->toDateString(), $histEnd->toDateString()])
+                ->whereNotNull('orders.product_sku')
+                ->where('orders.product_sku', '!=', '-')
                 ->selectRaw("
                     orders.product_sku,
-                    COALESCE(MAX(p.canonical_name), MAX(orders.product_name)) as product_name,
+                    {$nameExpr} as product_name,
                     SUM(orders.qty) as total_qty,
                     SUM(orders.gmv) as total_gmv,
                     AVG(orders.gmv / NULLIF(orders.qty,0)) as avg_unit_price
@@ -101,14 +106,19 @@ class ForecastController extends Controller
 
         $histRows = collect();
         if (!empty($storeIds)) {
-            $histRows = DB::table('orders')
-                ->whereIn('store_id', $storeIds)
-                ->whereIn('status', Order::gmvStatuses())
-                ->whereBetween('order_date', [$histStart->toDateString(), $histEnd->toDateString()])
-                ->whereNotNull('product_sku')
-                ->where('product_sku', '!=', '-')
-                ->leftJoin('products as p', 'orders.product_sku', '=', 'p.product_sku')
-                ->selectRaw("orders.product_sku, COALESCE(MAX(p.canonical_name), MAX(orders.product_name)) as product_name, SUM(orders.qty) as total_qty, SUM(orders.gmv) as total_gmv")
+            $hasProducts = \Illuminate\Support\Facades\Schema::hasTable('products');
+            $q = DB::table('orders');
+            if ($hasProducts) $q->leftJoin('products as p', 'orders.product_sku', '=', 'p.product_sku');
+            $nameExpr = $hasProducts
+                ? "COALESCE(MAX(p.canonical_name), MAX(orders.product_name))"
+                : "MAX(orders.product_name)";
+            $histRows = $q
+                ->whereIn('orders.store_id', $storeIds)
+                ->whereIn('orders.status', Order::gmvStatuses())
+                ->whereBetween('orders.order_date', [$histStart->toDateString(), $histEnd->toDateString()])
+                ->whereNotNull('orders.product_sku')
+                ->where('orders.product_sku', '!=', '-')
+                ->selectRaw("orders.product_sku, {$nameExpr} as product_name, SUM(orders.qty) as total_qty, SUM(orders.gmv) as total_gmv")
                 ->groupByRaw('orders.product_sku')
                 ->orderByDesc('total_qty')
                 ->get();
