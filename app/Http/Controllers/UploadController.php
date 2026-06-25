@@ -169,10 +169,10 @@ class UploadController extends Controller
             $row = array_change_key_case($row, CASE_LOWER);
 
             $orderId = $this->col($row, ['no. pesanan','order id','order_id','nomor pesanan','no pesanan']) ?? 'AUTO-'.uniqid();
-            $dateRaw = $this->col($row, ['waktu pesanan dibuat','order time','tanggal','date','order date','create time']);
-            $gmv     = $this->toNumber($this->col($row, ['total harga produk','gmv','total pesanan','total price','price','harga']));
-            $qty     = (int)($this->toNumber($this->col($row, ['jumlah','qty','quantity'])) ?: 1);
-            $sku     = $this->col($row, ['sku induk','sku','product sku','sku referensi']) ?? '-';
+            $dateRaw = $this->col($row, ['waktu pesanan dibuat','order time','tanggal','date','order date','create time','waktu pembayaran dilakukan']);
+            $gmv     = $this->toNumber($this->col($row, ['subtotal pesanan','harga setelah diskon','total harga produk','gmv','total pesanan','total pembayaran','total price','price','harga']));
+            $qty     = (int)($this->toNumber($this->col($row, ['jumlah','qty','quantity','jumlah produk di pesan'])) ?: 1);
+            $sku     = $this->col($row, ['sku induk','nomor referensi sku','sku','product sku','sku referensi']) ?? '-';
             $name    = $this->col($row, ['nama produk','product name','nama barang','item name']) ?? '-';
             $buyer   = $this->col($row, ['username (pembeli)','buyer','username','buyer username','nama pembeli']) ?? 'unknown';
             $status  = $this->mapStatus($this->col($row, ['status pesanan','status','order status']) ?? 'complete');
@@ -322,8 +322,17 @@ class UploadController extends Controller
 
     private function toNumber(?string $val): float
     {
-        if ($val === null) return 0;
-        return (float)preg_replace('/[^0-9.\-]/', '', str_replace(',', '.', $val));
+        if ($val === null || trim($val) === '') return 0;
+        $val = trim($val);
+        // Indonesian format: 249.000 or 1.234.567 (dots as thousands separator)
+        if (preg_match('/^\d{1,3}(\.\d{3})+(,\d+)?$/', $val)) {
+            $val = str_replace('.', '', $val);
+            $val = str_replace(',', '.', $val);
+            return (float)$val;
+        }
+        // Western/mixed format: remove thousand separators, normalize decimal
+        $val = str_replace(',', '.', $val);
+        return (float)preg_replace('/[^0-9.\-]/', '', $val);
     }
 
     private function mapStatus(string $raw): string
