@@ -103,40 +103,45 @@
       </div>
     </div>
     <div class="modal-footer justify-content-between">
-      <form id="deleteForm" method="POST" onsubmit="return confirm('Hapus target ini?')">
-        @csrf @method('DELETE')
-        <button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash me-1"></i>Hapus</button>
-      </form>
+      <button type="button" class="btn btn-sm btn-outline-danger" id="btnDelete"><i class="bi bi-trash me-1"></i>Hapus</button>
       <div class="d-flex gap-2">
         <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Batal</button>
-        <button form="editForm" class="btn btn-sm btn-primary">Simpan</button>
+        <button type="submit" class="btn btn-sm btn-primary">Simpan</button>
       </div>
     </div>
     </form>
   </div></div>
 </div>
 
+{{-- Delete form (outside modal to avoid nested form) --}}
+<form id="deleteForm" method="POST" style="display:none">@csrf @method('DELETE')</form>
+
 @push('scripts')
 <script>
-// Edit modal
-document.querySelectorAll('.target-cell').forEach(el => {
-  el.addEventListener('click', function() {
-    const id  = this.dataset.id;
-    const gmv = this.dataset.gmv;
-    document.getElementById('editLabel').textContent = this.dataset.store + ' — ' + this.dataset.month;
-    document.getElementById('editGmv').value = gmv;
-    document.getElementById('editForm').action = '/targets/' + id;
-    document.getElementById('deleteForm').action = '/targets/' + id;
-    new bootstrap.Modal(document.getElementById('editModal')).show();
+document.addEventListener('DOMContentLoaded', function () {
+  // Edit existing target
+  document.querySelectorAll('.target-cell').forEach(function(el) {
+    el.addEventListener('click', function() {
+      var id  = this.getAttribute('data-id');
+      var gmv = this.getAttribute('data-gmv');
+      document.getElementById('editLabel').textContent = this.getAttribute('data-store') + ' — ' + this.getAttribute('data-month');
+      document.getElementById('editGmv').value = gmv;
+      document.getElementById('editForm').action = '/targets/' + id;
+      document.getElementById('deleteForm').action = '/targets/' + id;
+      document.getElementById('btnDelete').onclick = function() {
+        if (confirm('Hapus target ini?')) document.getElementById('deleteForm').submit();
+      };
+      bootstrap.Modal.getOrCreateInstance(document.getElementById('editModal')).show();
+    });
   });
-});
 
-// Add modal shortcut: click "—" cell
-document.querySelectorAll('.add-target-cell').forEach(el => {
-  el.addEventListener('click', function() {
-    document.getElementById('add-store-id').value = this.dataset.storeId;
-    document.getElementById('add-month').value = this.dataset.month;
-    new bootstrap.Modal(document.getElementById('addModal')).show();
+  // Add target shortcut from empty cell
+  document.querySelectorAll('.add-target-cell').forEach(function(el) {
+    el.addEventListener('click', function() {
+      document.getElementById('add-store-id').value = this.getAttribute('data-store-id');
+      document.getElementById('add-month').value = this.getAttribute('data-month');
+      bootstrap.Modal.getOrCreateInstance(document.getElementById('addModal')).show();
+    });
   });
 });
 </script>
