@@ -6,5 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class Cog extends Model
 {
-    //
+    protected $fillable = ['store_id', 'product_sku', 'product_name', 'hpp_per_unit', 'effective_from'];
+
+    public function store() { return $this->belongsTo(Store::class); }
 }
