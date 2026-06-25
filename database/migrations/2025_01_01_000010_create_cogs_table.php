@@ -7,8 +7,7 @@ return new class extends Migration {
     public function up(): void {
         Schema::create('cogs', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('store_id')->constrained()->cascadeOnDelete();
-            $table->string('product_sku');
+            $table->string('product_sku')->unique();
             $table->string('product_name');
             $table->decimal('hpp_per_unit', 15, 2)->default(0);
             $table->date('effective_from');

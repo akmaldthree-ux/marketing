@@ -3,7 +3,6 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 class Cog extends Model {
     protected $table = 'cogs';
-    protected $fillable = ['store_id','product_sku','product_name','hpp_per_unit','effective_from'];
+    protected $fillable = ['product_sku','product_name','hpp_per_unit','effective_from'];
     protected $casts = ['effective_from'=>'date'];
-    public function store() { return $this->belongsTo(Store::class); }
 }
