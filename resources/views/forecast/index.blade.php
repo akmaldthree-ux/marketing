@@ -28,7 +28,7 @@
       <div class="col-sm-6 col-md-2">
         <label class="form-label small fw-semibold">Rata-rata Harga (Rp)</label>
         <input type="number" name="avg_price" value="{{ $avgPrice }}"
-          class="form-control form-control-sm" min="1" step="1000">
+          class="form-control form-control-sm" min="1" step="1">
         <div class="form-text">Rp {{ number_format($avgPrice/1000,0) }}k/unit</div>
       </div>
 
