@@ -12,18 +12,27 @@
     @foreach(['DTHREE','HURIM','ASFARA'] as $b)<option value="{{ $b }}" {{ $brand===$b?'selected':'' }}>{{ $b }}</option>@endforeach
   </select>
   <button class="btn btn-primary btn-sm px-3">Filter</button>
-  <small class="text-muted ms-2"><i class="bi bi-info-circle me-1"></i>GMV & HPP dihitung otomatis dari data upload. Klik <strong>Biaya Ops</strong> untuk input manual.</small>
+  <small class="text-muted ms-2"><i class="bi bi-info-circle me-1"></i>GMV & HPP otomatis dari data upload. Klik ✏️ di baris Biaya Ops untuk input manual.</small>
 </form>
 
 @php
-$months     = ['01'=>'Jan','02'=>'Feb','03'=>'Mar','04'=>'Apr','05'=>'Mei','06'=>'Jun','07'=>'Jul','08'=>'Ags','09'=>'Sep','10'=>'Okt','11'=>'Nov','12'=>'Des'];
-$monthNums  = array_keys($months);
+$months = ['01'=>'Jan','02'=>'Feb','03'=>'Mar','04'=>'Apr','05'=>'Mei','06'=>'Jun','07'=>'Jul','08'=>'Ags','09'=>'Sep','10'=>'Okt','11'=>'Nov','12'=>'Des'];
+$rows = [
+    ['key'=>'grossGmv',    'label'=>'Gross GMV',    'auto'=>true,  'sep'=>false],
+    ['key'=>'netGmv',      'label'=>'Net GMV',      'auto'=>true,  'sep'=>true],
+    ['key'=>'cogs',        'label'=>'HPP / COGS',   'auto'=>true,  'sep'=>false],
+    ['key'=>'adsSpend',    'label'=>'Ads Spend',    'auto'=>true,  'sep'=>false],
+    ['key'=>'opsCost',     'label'=>'Biaya Ops',    'auto'=>false, 'sep'=>true],
+    ['key'=>'grossProfit', 'label'=>'Gross Profit', 'auto'=>true,  'sep'=>false],
+    ['key'=>'netProfit',   'label'=>'Net Profit',   'auto'=>true,  'sep'=>false],
+];
+$profitKeys = ['grossProfit','netProfit'];
 @endphp
 
 <div class="card mb-4">
   <div class="card-header d-flex justify-content-between align-items-center">
     <span>Laporan P&L Bulanan {{ $year }}</span>
-    <small class="text-muted">HPP dihitung dari: qty terjual × hpp/unit yang diset di menu HPP</small>
+    <small class="text-muted">HPP = qty terjual × hpp/unit (dari menu HPP)</small>
   </div>
   <div class="card-body p-0">
     <div class="table-responsive">
@@ -31,45 +40,32 @@ $monthNums  = array_keys($months);
         <thead class="table-light">
           <tr>
             <th style="min-width:180px">Komponen</th>
-            @foreach($months as $m=>$ml)<th class="text-end">{{ $ml }}</th>@endforeach
+            @foreach($months as $ml)<th class="text-end">{{ $ml }}</th>@endforeach
             <th class="text-end fw-bold">Total</th>
           </tr>
         </thead>
         <tbody>
+        @foreach($rows as $row)
         @php
-        $rows = [
-            'gross_gmv'        => ['label'=>'Gross GMV',    'auto'=>true,  'separator_after'=>false],
-            'net_gmv'          => ['label'=>'Net GMV',      'auto'=>true,  'separator_after'=>true],
-            'cogs'             => ['label'=>'HPP / COGS',   'auto'=>true,  'separator_after'=>false],
-            'ads_spend'        => ['label'=>'Ads Spend',    'auto'=>true,  'separator_after'=>false],
-            'operational_cost' => ['label'=>'Biaya Ops',    'auto'=>false, 'separator_after'=>true],
-            'gross_profit'     => ['label'=>'Gross Profit', 'auto'=>true,  'separator_after'=>false],
-            'net_profit'       => ['label'=>'Net Profit',   'auto'=>true,  'separator_after'=>false],
-        ];
-        $profitKeys = ['gross_profit','net_profit'];
+          $key   = $row['key'];
+          $total = collect($byMonth)->sum($key);
+          $isProfit = in_array($key, $profitKeys);
         @endphp
-
-        @foreach($rows as $key=>$row)
-        <tr class="{{ in_array($key,$profitKeys)?'fw-semibold table-active':'' }}">
+        <tr class="{{ $isProfit ? 'fw-semibold table-active' : '' }}">
           <td>
             {{ $row['label'] }}
             @if(!$row['auto'])
               <button type="button" class="btn btn-link btn-sm p-0 ms-1 text-primary"
-                data-bs-toggle="modal" data-bs-target="#opsModal"
-                title="Input Biaya Ops">
+                data-bs-toggle="modal" data-bs-target="#opsModal" title="Input Biaya Ops">
                 <i class="bi bi-pencil-square" style="font-size:.75rem"></i>
               </button>
             @else
               <span class="badge bg-secondary-subtle text-secondary ms-1" style="font-size:.6rem">auto</span>
             @endif
           </td>
-
           @foreach($months as $m=>$ml)
-          @php
-            $period = $year.'-'.$m;
-            $v = $byMonth[$period][$key] ?? 0;
-          @endphp
-          <td class="text-end {{ in_array($key,$profitKeys)&&$v<0?'text-danger':'' }}">
+          @php $v = $byMonth[$year.'-'.$m][$key] ?? 0; @endphp
+          <td class="text-end {{ $isProfit && $v < 0 ? 'text-danger' : '' }}">
             @if($v != 0)
               {{ number_format($v/1000000,1) }}jt
             @else
@@ -77,13 +73,11 @@ $monthNums  = array_keys($months);
             @endif
           </td>
           @endforeach
-
-          @php $total = collect($byMonth)->sum($key); @endphp
-          <td class="text-end fw-bold {{ in_array($key,$profitKeys)?($total>=0?'text-success':'text-danger'):'' }}">
+          <td class="text-end fw-bold {{ $isProfit ? ($total >= 0 ? 'text-success' : 'text-danger') : '' }}">
             {{ number_format($total/1000000,1) }}jt
           </td>
         </tr>
-        @if($row['separator_after'])
+        @if($row['sep'])
           <tr><td colspan="15" class="p-0"><div style="border-top:2px solid #dee2e6"></div></td></tr>
         @endif
         @endforeach
@@ -93,7 +87,6 @@ $monthNums  = array_keys($months);
   </div>
 </div>
 
-{{-- Chart --}}
 <div class="card">
   <div class="card-header">Tren Bulanan {{ $year }}</div>
   <div class="card-body"><canvas id="pnlChart" height="80"></canvas></div>
@@ -101,7 +94,7 @@ $monthNums  = array_keys($months);
 
 {{-- Modal Input Biaya Ops --}}
 <div class="modal fade" id="opsModal">
-  <div class="modal-dialog modal-lg"><div class="modal-content">
+  <div class="modal-dialog"><div class="modal-content">
     <form method="POST" action="{{ route('pnl.saveOps') }}">@csrf
     <input type="hidden" name="year" value="{{ $year }}">
     <div class="modal-header">
@@ -110,28 +103,26 @@ $monthNums  = array_keys($months);
     </div>
     <div class="modal-body">
       <div class="mb-3">
-        <label class="form-label small">Toko / Cost Center</label>
+        <label class="form-label small fw-semibold">Toko / Cost Center</label>
         <select name="store_id" class="form-select form-select-sm" required>
           <option value="">Pilih Toko...</option>
           @foreach($stores as $s)
             <option value="{{ $s->id }}">{{ $s->name }} ({{ $s->brand }})</option>
           @endforeach
         </select>
-        <div class="form-text">Biaya ops bisa dialokasikan per toko atau gunakan satu toko sebagai cost center brand.</div>
+        <div class="form-text">Bisa dialokasikan per toko atau satu toko sebagai cost center brand.</div>
       </div>
       <div class="mb-3">
-        <label class="form-label small">Bulan</label>
+        <label class="form-label small fw-semibold">Bulan</label>
         <select name="month" class="form-select form-select-sm" required>
-          @foreach($months as $m=>$ml)
-            <option value="{{ $m }}">{{ $ml }}</option>
-          @endforeach
+          @foreach($months as $m=>$ml)<option value="{{ $m }}">{{ $ml }}</option>@endforeach
         </select>
       </div>
       <div class="mb-3">
-        <label class="form-label small">Biaya Operasional (Rp)</label>
-        <input type="number" name="operational_cost" class="form-control form-control-sm" min="0" step="100000"
-          placeholder="contoh: 5000000 untuk Rp 5jt" required>
-        <div class="form-text">Termasuk: gaji, sewa gudang, utilitas, perlengkapan, dll.</div>
+        <label class="form-label small fw-semibold">Biaya Operasional (Rp)</label>
+        <input type="number" name="operational_cost" class="form-control form-control-sm"
+          min="0" step="100000" placeholder="contoh: 5000000" required>
+        <div class="form-text">Gaji, sewa gudang, utilitas, perlengkapan, dll.</div>
       </div>
     </div>
     <div class="modal-footer">
@@ -144,47 +135,19 @@ $monthNums  = array_keys($months);
 
 @push('scripts')
 <script>
-const pnlData = @json(array_values($byMonth));
-const labels  = @json(array_values($months));
-
+const pnlRaw   = @json(array_values($byMonth));
+const pnlLabel = @json(array_values($months));
 new Chart(document.getElementById('pnlChart'), {
   type: 'bar',
   data: {
-    labels: labels,
+    labels: pnlLabel,
     datasets: [
-      {
-        label: 'Gross GMV',
-        data: pnlData.map(d => d.gross_gmv),
-        backgroundColor: 'rgba(124,111,247,.5)',
-        borderRadius: 3,
-        order: 2,
-      },
-      {
-        label: 'HPP+Ads',
-        data: pnlData.map(d => d.cogs + d.ads_spend + d.operational_cost),
-        backgroundColor: 'rgba(239,68,68,.4)',
-        borderRadius: 3,
-        order: 2,
-      },
-      {
-        label: 'Net Profit',
-        data: pnlData.map(d => d.net_profit),
-        type: 'line',
-        borderColor: '#10b981',
-        backgroundColor: 'rgba(16,185,129,.1)',
-        tension: .3,
-        fill: true,
-        order: 1,
-      },
+      {label:'Gross GMV', data:pnlRaw.map(d=>d.grossGmv), backgroundColor:'rgba(124,111,247,.5)', borderRadius:3, order:2},
+      {label:'Total Biaya', data:pnlRaw.map(d=>d.cogs+d.adsSpend+d.opsCost), backgroundColor:'rgba(239,68,68,.4)', borderRadius:3, order:2},
+      {label:'Net Profit', data:pnlRaw.map(d=>d.netProfit), type:'line', borderColor:'#10b981', backgroundColor:'rgba(16,185,129,.1)', tension:.3, fill:true, order:1},
     ]
   },
-  options: {
-    responsive: true,
-    scales: {
-      y: { ticks: { callback: v => 'Rp ' + new Intl.NumberFormat('id').format(v) } }
-    },
-    plugins: { legend: { position: 'top' } }
-  }
+  options:{responsive:true,scales:{y:{ticks:{callback:v=>'Rp '+new Intl.NumberFormat('id').format(v)}}},plugins:{legend:{position:'top'}}}
 });
 </script>
 @endpush
