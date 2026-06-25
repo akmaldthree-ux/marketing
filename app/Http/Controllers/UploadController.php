@@ -96,7 +96,14 @@ class UploadController extends Controller
             }
         }
 
-        $sheetXml = $zip->getFromName('xl/worksheets/sheet1.xml');
+        $sheetXml = null;
+        for ($i = 0; $i < $zip->numFiles; $i++) {
+            $name = $zip->getNameIndex($i);
+            if (preg_match('#xl/worksheets/sheet\d+\.xml#', $name)) {
+                $sheetXml = $zip->getFromIndex($i);
+                break;
+            }
+        }
         $zip->close();
         if (!$sheetXml) throw new \RuntimeException('Sheet tidak ditemukan dalam file XLSX.');
 
