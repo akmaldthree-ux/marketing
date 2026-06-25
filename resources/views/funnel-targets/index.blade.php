@@ -5,9 +5,18 @@
 @php
 $stageLabels = ['views_to_visitor'=>'Views to Visitor (VTR)','atc_rate'=>'Add-to-Cart Rate','cvr'=>'Conversion Rate (CVR)'];
 @endphp
-<div class="d-flex justify-content-end mb-3">
+<div class="d-flex justify-content-end gap-2 mb-3">
+  <button class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#importFunnelModal"><i class="bi bi-file-earmark-arrow-up me-1"></i>Import Excel</button>
   <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addModal"><i class="bi bi-plus-lg me-1"></i>Set Target Funnel</button>
 </div>
+
+@if(session('import_errors'))
+<div class="alert alert-warning alert-dismissible fade show mb-3" style="font-size:.82rem">
+  <strong>Beberapa baris dilewati:</strong>
+  <ul class="mb-0 mt-1">@foreach(session('import_errors') as $e)<li>{{ $e }}</li>@endforeach</ul>
+  <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+</div>
+@endif
 <div class="card">
   <div class="card-body p-0">
     <table class="table table-hover mb-0">
@@ -71,4 +80,12 @@ $stageLabels = ['views_to_visitor'=>'Views to Visitor (VTR)','atc_rate'=>'Add-to
     </form>
   </div></div>
 </div>
+
+<x-import-modal
+  id="importFunnelModal"
+  title="Import Target Funnel"
+  action="{{ route('import.funnel-target') }}"
+  template-route="{{ route('template.funnel-target') }}"
+  template-label="Download Template Funnel"
+/>
 @endsection

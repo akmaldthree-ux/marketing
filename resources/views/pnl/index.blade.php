@@ -15,8 +15,19 @@
   <a href="{{ route('export.pnl', ['year'=>$year,'brand'=>$brand]) }}" class="btn btn-success btn-sm ms-auto">
     <i class="bi bi-download me-1"></i>Export CSV
   </a>
+  <button class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#importOpsModal">
+    <i class="bi bi-file-earmark-arrow-up me-1"></i>Import Biaya Ops
+  </button>
   <small class="text-muted"><i class="bi bi-info-circle me-1"></i>GMV & HPP otomatis. Klik ✏️ di Biaya Ops untuk input manual.</small>
 </form>
+
+@if(session('import_errors'))
+<div class="alert alert-warning alert-dismissible fade show mb-3" style="font-size:.82rem">
+  <strong>Beberapa baris dilewati:</strong>
+  <ul class="mb-0 mt-1">@foreach(session('import_errors') as $e)<li>{{ $e }}</li>@endforeach</ul>
+  <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+</div>
+@endif
 
 @php
 $months = ['01'=>'Jan','02'=>'Feb','03'=>'Mar','04'=>'Apr','05'=>'Mei','06'=>'Jun','07'=>'Jul','08'=>'Ags','09'=>'Sep','10'=>'Okt','11'=>'Nov','12'=>'Des'];
@@ -94,6 +105,14 @@ $profitKeys = ['grossProfit','netProfit'];
   <div class="card-header">Tren Bulanan {{ $year }}</div>
   <div class="card-body"><canvas id="pnlChart" height="80"></canvas></div>
 </div>
+
+<x-import-modal
+  id="importOpsModal"
+  title="Import Biaya Operasional"
+  action="{{ route('import.biaya-ops') }}"
+  template-route="{{ route('template.biaya-ops') }}"
+  template-label="Download Template Biaya Ops"
+/>
 
 {{-- Modal Input Biaya Ops --}}
 <div class="modal fade" id="opsModal">

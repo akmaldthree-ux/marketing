@@ -2,9 +2,18 @@
 @section('title','HPP / COG')
 @section('page-title','HPP per Produk')
 @section('content')
-<div class="d-flex justify-content-end mb-3">
+<div class="d-flex justify-content-end gap-2 mb-3">
+  <button class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#importModal"><i class="bi bi-file-earmark-arrow-up me-1"></i>Import Excel</button>
   <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addModal"><i class="bi bi-plus-lg me-1"></i>Tambah HPP</button>
 </div>
+
+@if(session('import_errors'))
+<div class="alert alert-warning alert-dismissible fade show mb-3" style="font-size:.82rem">
+  <strong>Beberapa baris dilewati:</strong>
+  <ul class="mb-0 mt-1">@foreach(session('import_errors') as $e)<li>{{ $e }}</li>@endforeach</ul>
+  <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+</div>
+@endif
 <div class="card">
   <div class="card-body p-0">
     <table class="table table-hover mb-0">
@@ -60,4 +69,11 @@
     </form>
   </div></div>
 </div>
+<x-import-modal
+  id="importModal"
+  title="Import HPP / COGs"
+  action="{{ route('import.hpp') }}"
+  template-route="{{ route('template.hpp') }}"
+  template-label="Download Template HPP"
+/>
 @endsection

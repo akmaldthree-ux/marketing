@@ -5,7 +5,7 @@ use App\Http\Controllers\{
     UserController, UploadController, TargetController, CogController,
     FunnelTargetController, DailySalesController, RoasController,
     PnlController, FunnelController, CustomerController, SettingsController,
-    StoreCompareController, ProductAnalysisController, ExportController
+    StoreCompareController, ProductAnalysisController, ExportController, ImportController
 };
 
 Route::middleware('guest')->group(function () {
@@ -56,5 +56,17 @@ Route::middleware('auth')->group(function () {
 
         Route::resource('cogs', CogController::class)->except(['show']);
         Route::resource('funnel-targets', FunnelTargetController::class)->except(['show']);
+
+        // Import routes
+        Route::post('/import/target-gmv', [ImportController::class, 'importTargetGmv'])->name('import.target-gmv');
+        Route::post('/import/hpp', [ImportController::class, 'importHpp'])->name('import.hpp');
+        Route::post('/import/biaya-ops', [ImportController::class, 'importBiayaOps'])->name('import.biaya-ops');
+        Route::post('/import/funnel-target', [ImportController::class, 'importFunnelTarget'])->name('import.funnel-target');
     });
+
+    // Template downloads (semua user bisa download)
+    Route::get('/template/target-gmv', [ImportController::class, 'templateTargetGmv'])->name('template.target-gmv');
+    Route::get('/template/hpp', [ImportController::class, 'templateHpp'])->name('template.hpp');
+    Route::get('/template/biaya-ops', [ImportController::class, 'templateBiayaOps'])->name('template.biaya-ops');
+    Route::get('/template/funnel-target', [ImportController::class, 'templateFunnelTarget'])->name('template.funnel-target');
 });

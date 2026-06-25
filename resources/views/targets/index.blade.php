@@ -12,8 +12,17 @@
   </form>
   <small class="text-muted ms-2"><i class="bi bi-info-circle me-1"></i>Klik angka untuk edit</small>
   <a href="{{ route('export.targets', ['year'=>$year]) }}" class="btn btn-success btn-sm ms-auto"><i class="bi bi-download me-1"></i>Export CSV</a>
+  <button class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#importModal"><i class="bi bi-file-earmark-arrow-up me-1"></i>Import</button>
   <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addModal"><i class="bi bi-plus-lg me-1"></i>Set Target</button>
 </div>
+
+@if(session('import_errors'))
+<div class="alert alert-warning alert-dismissible fade show mb-3" style="font-size:.82rem">
+  <strong>Beberapa baris dilewati:</strong>
+  <ul class="mb-0 mt-1">@foreach(session('import_errors') as $e)<li>{{ $e }}</li>@endforeach</ul>
+  <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+</div>
+@endif
 <div class="card">
   <div class="card-body p-0">
     <div class="table-responsive">
@@ -147,4 +156,13 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 </script>
 @endpush
+
+<x-import-modal
+  id="importModal"
+  title="Import Target GMV"
+  action="{{ route('import.target-gmv') }}"
+  template-route="{{ route('template.target-gmv') }}"
+  template-label="Download Template Target GMV"
+  :fields="[['name'=>'year','value'=>$year]]"
+/>
 @endsection
