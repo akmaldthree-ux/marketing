@@ -86,16 +86,19 @@ class UploadController extends Controller
         $zip = new \ZipArchive();
         if ($zip->open($path) !== true) throw new \RuntimeException('File XLSX tidak valid.');
 
+        // Parse shared strings using regex to avoid namespace issues
         $sharedStrings = [];
-        $xml = $zip->getFromName('xl/sharedStrings.xml');
-        if ($xml) {
-            $ss = new \SimpleXMLElement($xml);
-            $ss->registerXPathNamespace('x', 'http://schemas.openxmlformats.org/spreadsheetml/2006/main');
-            foreach ($ss->xpath('//x:si') as $si) {
-                $sharedStrings[] = strip_tags($si->asXML());
+        $ssXml = $zip->getFromName('xl/sharedStrings.xml');
+        if ($ssXml) {
+            preg_match_all('/<si>(.*?)<\/si>/s', $ssXml, $siMatches);
+            foreach ($siMatches[1] as $si) {
+                // Collect all <t> text values within <si>
+                preg_match_all('/<t[^>]*>(.*?)<\/t>/s', $si, $tMatches);
+                $sharedStrings[] = implode('', array_map('html_entity_decode', $tMatches[1]));
             }
         }
 
+        // Find first sheet
         $sheetXml = null;
         for ($i = 0; $i < $zip->numFiles; $i++) {
             $name = $zip->getNameIndex($i);
@@ -107,22 +110,26 @@ class UploadController extends Controller
         $zip->close();
         if (!$sheetXml) throw new \RuntimeException('Sheet tidak ditemukan dalam file XLSX.');
 
-        $sheet = new \SimpleXMLElement($sheetXml);
-        $sheet->registerXPathNamespace('x', 'http://schemas.openxmlformats.org/spreadsheetml/2006/main');
-
+        // Parse rows using regex
         $rawRows = [];
-        foreach ($sheet->xpath('//x:row') as $row) {
+        preg_match_all('/<row[^>]*>(.*?)<\/row>/s', $sheetXml, $rowMatches);
+        foreach ($rowMatches[1] as $rowContent) {
             $cells = [];
-            foreach ($row->xpath('x:c') as $c) {
-                $attr = $c->attributes();
-                $ref  = (string)($attr['r'] ?? '');
+            preg_match_all('/<c\s([^>]*)>(.*?)<\/c>/s', $rowContent, $cellMatches, PREG_SET_ORDER);
+            foreach ($cellMatches as $cell) {
+                $attrs = $cell[1];
+                $inner = $cell[2];
+                preg_match('/r="([^"]+)"/', $attrs, $rMatch);
+                preg_match('/t="([^"]+)"/', $attrs, $tMatch);
+                preg_match('/<v>(.*?)<\/v>/s', $inner, $vMatch);
+                $ref  = $rMatch[1] ?? '';
                 $col  = preg_replace('/[0-9]/', '', $ref);
-                $type = (string)($attr['t'] ?? '');
-                $val  = (string)($c->v ?? '');
+                $type = $tMatch[1] ?? '';
+                $val  = $vMatch[1] ?? '';
                 if ($type === 's') $val = $sharedStrings[(int)$val] ?? '';
-                $cells[$col] = $val;
+                if ($col !== '') $cells[$col] = $val;
             }
-            $rawRows[] = $cells;
+            if (!empty($cells)) $rawRows[] = $cells;
         }
 
         if (empty($rawRows)) return [];
