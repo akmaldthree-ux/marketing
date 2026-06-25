@@ -30,7 +30,7 @@
           <td class="fw-semibold">{{ $store->name }}</td>
           <td><span class="badge badge-brand-{{ $store->brand }}">{{ $store->brand }}</span></td>
           @for($m=1;$m<=12;$m++)
-          @php $t = $targets[$store->id]?->firstWhere('month',$m); @endphp
+          @php $t = $targets->get($store->id)?->firstWhere('month',$m); @endphp
           <td class="text-end">
             @if($t)
               <span class="target-cell text-nowrap text-primary" style="cursor:pointer"
