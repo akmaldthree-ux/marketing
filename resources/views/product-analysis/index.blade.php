@@ -94,10 +94,10 @@
           <td class="text-end fw-semibold text-primary">Rp {{ number_format($sku->total_gmv/1000000,1) }}jt</td>
           <td class="text-end">Rp {{ number_format($sku->avg_price/1000,0) }}k</td>
           <td class="text-end text-danger">
-            {{ $sku->has_hpp ? 'Rp '.number_format($sku->total_hpp/1000000,1).'jt' : '<span class="text-muted">—</span>' }}
+            @if($sku->has_hpp) Rp {{ number_format($sku->total_hpp/1000000,1) }}jt @else <span class="text-muted">—</span> @endif
           </td>
           <td class="text-end {{ $sku->total_profit>0?'text-success fw-semibold':'text-danger' }}">
-            {{ $sku->has_hpp ? 'Rp '.number_format($sku->total_profit/1000000,1).'jt' : '<span class="text-muted">—</span>' }}
+            @if($sku->has_hpp) Rp {{ number_format($sku->total_profit/1000000,1) }}jt @else <span class="text-muted">—</span> @endif
           </td>
           <td class="text-end">
             @if($sku->has_hpp)
