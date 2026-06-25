@@ -4,7 +4,8 @@ use App\Http\Controllers\{
     AuthController, DashboardController, StoreController, PicController,
     UserController, UploadController, TargetController, CogController,
     FunnelTargetController, DailySalesController, RoasController,
-    PnlController, FunnelController, CustomerController, SettingsController
+    PnlController, FunnelController, CustomerController, SettingsController,
+    StoreCompareController, ProductAnalysisController, ExportController
 };
 
 Route::middleware('guest')->group(function () {
@@ -24,6 +25,13 @@ Route::middleware('auth')->group(function () {
     Route::get('/pnl', [PnlController::class, 'index'])->name('pnl');
     Route::post('/pnl/ops', [PnlController::class, 'saveOps'])->name('pnl.saveOps');
     Route::get('/customers', [CustomerController::class, 'index'])->name('customers');
+    Route::get('/store-compare', [StoreCompareController::class, 'index'])->name('store-compare');
+    Route::get('/product-analysis', [ProductAnalysisController::class, 'index'])->name('product-analysis');
+
+    // Export CSV
+    Route::get('/export/targets', [ExportController::class, 'targets'])->name('export.targets');
+    Route::get('/export/pnl', [ExportController::class, 'pnl'])->name('export.pnl');
+    Route::get('/export/daily-sales', [ExportController::class, 'dailySales'])->name('export.daily-sales');
 
     // Upload
     Route::get('/upload', [UploadController::class, 'index'])->name('upload.index');

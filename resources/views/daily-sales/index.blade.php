@@ -13,6 +13,9 @@
     @foreach($stores as $s)<option value="{{ $s->id }}" {{ $storeId==$s->id?'selected':'' }}>{{ $s->name }}</option>@endforeach
   </select>
   <button class="btn btn-primary btn-sm px-3">Filter</button>
+  <a href="{{ route('export.daily-sales', ['month'=>$month,'brand'=>$brand]) }}" class="btn btn-success btn-sm">
+    <i class="bi bi-download me-1"></i>Export CSV
+  </a>
 </form>
 
 <div class="row g-3 mb-4">

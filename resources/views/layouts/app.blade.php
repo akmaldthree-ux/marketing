@@ -27,7 +27,16 @@ body{background:#f5f6fa;font-family:'Segoe UI',sans-serif;}
 .badge-brand-DTHREE{background:#e0e7ff;color:#3730a3;}
 .badge-brand-HURIM{background:#fce7f3;color:#9d174d;}
 .badge-brand-ASFARA{background:#d1fae5;color:#065f46;}
-@media(max-width:768px){.sidebar{transform:translateX(-100%)}.page-content{margin-left:0}.topbar{left:0}}
+@media(max-width:991px){
+  .sidebar{transform:translateX(-100%);transition:transform .25s ease;}
+  .sidebar.open{transform:translateX(0);}
+  .sidebar-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:999;}
+  .sidebar-overlay.show{display:block;}
+  .page-content{margin-left:0;}
+  .topbar{left:0;}
+  .topbar-toggle{display:flex!important;}
+}
+@media(min-width:992px){.topbar-toggle{display:none!important;}}
 </style>
 @stack('styles')
 </head>
@@ -42,6 +51,8 @@ body{background:#f5f6fa;font-family:'Segoe UI',sans-serif;}
     <a href="{{ route('funnel') }}" class="nav-link {{ request()->routeIs('funnel') ? 'active' : '' }}"><i class="bi bi-funnel"></i> Funnel</a>
     <a href="{{ route('pnl') }}" class="nav-link {{ request()->routeIs('pnl') ? 'active' : '' }}"><i class="bi bi-calculator"></i> P&L</a>
     <a href="{{ route('customers') }}" class="nav-link {{ request()->routeIs('customers') ? 'active' : '' }}"><i class="bi bi-people"></i> Customer</a>
+    <a href="{{ route('store-compare') }}" class="nav-link {{ request()->routeIs('store-compare') ? 'active' : '' }}"><i class="bi bi-columns-gap"></i> Perbandingan Toko</a>
+    <a href="{{ route('product-analysis') }}" class="nav-link {{ request()->routeIs('product-analysis') ? 'active' : '' }}"><i class="bi bi-box-seam"></i> Analisis Produk</a>
     <div class="nav-label mt-2">Upload</div>
     <a href="{{ route('upload.index') }}" class="nav-link {{ request()->routeIs('upload.*') ? 'active' : '' }}"><i class="bi bi-cloud-upload"></i> Upload Data</a>
     @if(auth()->user()->isAdmin())
@@ -58,8 +69,40 @@ body{background:#f5f6fa;font-family:'Segoe UI',sans-serif;}
     <a href="{{ route('settings') }}" class="nav-link"><i class="bi bi-gear"></i> Pengaturan</a>
   </div>
 </div>
+<div class="sidebar-overlay" id="sidebarOverlay"></div>
 <div class="topbar">
+  <button class="btn btn-sm btn-light topbar-toggle me-2" id="sidebarToggle" style="display:none">
+    <i class="bi bi-list fs-5"></i>
+  </button>
   <div class="fw-semibold text-dark fs-6 flex-grow-1">@yield('page-title','')</div>
+  @php $alerts = \App\Http\Controllers\NotificationController::getTargetAlerts(); @endphp
+  @if(count($alerts) > 0)
+  <div class="dropdown me-2">
+    <button class="btn btn-sm btn-warning position-relative" data-bs-toggle="dropdown">
+      <i class="bi bi-bell-fill"></i>
+      <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="font-size:.6rem">
+        {{ count($alerts) }}
+      </span>
+    </button>
+    <ul class="dropdown-menu dropdown-menu-end" style="min-width:300px;max-height:400px;overflow-y:auto">
+      <li><h6 class="dropdown-header text-danger"><i class="bi bi-exclamation-triangle me-1"></i>Target Berisiko ({{ now()->format('M Y') }})</h6></li>
+      @foreach($alerts as $a)
+      <li>
+        <div class="dropdown-item-text py-2 px-3 border-bottom">
+          <div class="fw-semibold" style="font-size:.82rem">{{ $a['store'] }}</div>
+          <div class="d-flex justify-content-between mt-1">
+            <span class="badge badge-brand-{{ $a['brand'] }}">{{ $a['brand'] }}</span>
+            <small class="text-danger fw-semibold">{{ $a['actual_pct'] }}% <span class="text-muted fw-normal">/ exp. {{ $a['expected_pct'] }}%</span></small>
+          </div>
+          <div class="progress mt-1" style="height:4px">
+            <div class="progress-bar bg-danger" style="width:{{ $a['actual_pct'] }}%"></div>
+          </div>
+        </div>
+      </li>
+      @endforeach
+    </ul>
+  </div>
+  @endif
   <div class="dropdown">
     <button class="btn btn-sm btn-light d-flex align-items-center gap-2" data-bs-toggle="dropdown">
       <i class="bi bi-person-circle fs-5"></i>
@@ -97,6 +140,14 @@ body{background:#f5f6fa;font-family:'Segoe UI',sans-serif;}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
 <script>
 document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el=>new bootstrap.Tooltip(el));
+// Mobile sidebar toggle
+const sidebar = document.querySelector('.sidebar');
+const overlay = document.getElementById('sidebarOverlay');
+const toggler = document.getElementById('sidebarToggle');
+if (toggler) {
+  toggler.addEventListener('click', () => { sidebar.classList.toggle('open'); overlay.classList.toggle('show'); });
+  overlay.addEventListener('click', () => { sidebar.classList.remove('open'); overlay.classList.remove('show'); });
+}
 </script>
 @stack('scripts')
 </body>

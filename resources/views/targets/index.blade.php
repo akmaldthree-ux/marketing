@@ -11,7 +11,8 @@
     </select>
   </form>
   <small class="text-muted ms-2"><i class="bi bi-info-circle me-1"></i>Klik angka untuk edit</small>
-  <button class="btn btn-primary btn-sm ms-auto" data-bs-toggle="modal" data-bs-target="#addModal"><i class="bi bi-plus-lg me-1"></i>Set Target</button>
+  <a href="{{ route('export.targets', ['year'=>$year]) }}" class="btn btn-success btn-sm ms-auto"><i class="bi bi-download me-1"></i>Export CSV</a>
+  <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addModal"><i class="bi bi-plus-lg me-1"></i>Set Target</button>
 </div>
 <div class="card">
   <div class="card-body p-0">

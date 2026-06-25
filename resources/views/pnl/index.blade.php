@@ -12,7 +12,10 @@
     @foreach(['DTHREE','HURIM','ASFARA'] as $b)<option value="{{ $b }}" {{ $brand===$b?'selected':'' }}>{{ $b }}</option>@endforeach
   </select>
   <button class="btn btn-primary btn-sm px-3">Filter</button>
-  <small class="text-muted ms-2"><i class="bi bi-info-circle me-1"></i>GMV & HPP otomatis dari data upload. Klik ✏️ di baris Biaya Ops untuk input manual.</small>
+  <a href="{{ route('export.pnl', ['year'=>$year,'brand'=>$brand]) }}" class="btn btn-success btn-sm ms-auto">
+    <i class="bi bi-download me-1"></i>Export CSV
+  </a>
+  <small class="text-muted"><i class="bi bi-info-circle me-1"></i>GMV & HPP otomatis. Klik ✏️ di Biaya Ops untuk input manual.</small>
 </form>
 
 @php
