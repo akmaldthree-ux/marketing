@@ -1,27 +1,25 @@
 <?php
 namespace App\Http\Controllers;
-
-use App\Models\{User, Store, Pic};
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Hash;
-
-class SettingsController extends Controller
-{
-    public function index()
-    {
-        $users = User::with('pic')->get();
-        $stores = Store::with('pic')->get();
-        $pics = Pic::all();
-        return view('settings.index', compact('users', 'stores', 'pics'));
+use Illuminate\Support\Facades\{Auth, Hash};
+use Illuminate\Validation\Rules\Password;
+class SettingsController extends Controller {
+    public function index() { return view('settings.index'); }
+    public function updateProfile(Request $request) {
+        $user = Auth::user();
+        $data = $request->validate([
+            'name'  => 'required|string|max:100',
+            'email' => 'required|email|unique:users,email,'.$user->id,
+        ]);
+        $user->update($data);
+        return back()->with('success', 'Profil berhasil diperbarui.');
     }
-
-    public function updateProfile(Request $request)
-    {
-        $request->validate(['name' => 'required', 'email' => 'required|email']);
-        auth()->user()->update($request->only('name', 'email'));
-        if ($request->filled('password')) {
-            auth()->user()->update(['password' => Hash::make($request->password)]);
-        }
-        return back()->with('success', 'Profil berhasil diupdate.');
+    public function updatePassword(Request $request) {
+        $request->validate([
+            'current_password' => 'required|current_password',
+            'password'         => ['required','confirmed', Password::min(8)],
+        ]);
+        Auth::user()->update(['password' => Hash::make($request->password)]);
+        return back()->with('success', 'Password berhasil diubah.');
     }
 }

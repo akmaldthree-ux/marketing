@@ -1,0 +1,9 @@
+<?php
+namespace App\Models;
+use Illuminate\Database\Eloquent\Model;
+class UploadLog extends Model {
+    protected $fillable = ['store_id','user_id','report_type','filename','rows_imported','status','error_message','uploaded_at'];
+    protected $casts = ['uploaded_at'=>'datetime'];
+    public function store() { return $this->belongsTo(Store::class); }
+    public function user() { return $this->belongsTo(User::class); }
+}

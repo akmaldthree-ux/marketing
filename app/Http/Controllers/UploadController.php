@@ -1,350 +1,237 @@
 <?php
 namespace App\Http\Controllers;
-
 use App\Models\{Store, UploadLog, Order, StoreMetric, AdsPerformance, Financial, Customer};
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\{Auth, DB};
 use Carbon\Carbon;
-
-class UploadController extends Controller
-{
-    public function index()
-    {
-        $user = Auth::user();
-        $storeQuery = Store::query()->where('is_active', true);
-        if ($user->isPic() && $user->pic_id) {
-            $storeQuery->where('pic_id', $user->pic_id);
-        }
-        $stores = $storeQuery->get();
-        $logs = UploadLog::with('store')->orderByDesc('uploaded_at')->limit(20)->get();
-        return view('upload.index', compact('stores', 'logs'));
+class UploadController extends Controller {
+    public function index() {
+        $user  = Auth::user();
+        $stores= Store::query()->where('is_active',true)->when($user->isPic()&&$user->pic_id, fn($q)=>$q->where('pic_id',$user->pic_id))->orderBy('brand')->orderBy('name')->get();
+        $logs  = UploadLog::with(['store','user'])->orderByDesc('created_at')->limit(30)->get();
+        return view('upload.index', compact('stores','logs'));
     }
-
-    public function upload(Request $request)
-    {
+    public function store(Request $request) {
         $request->validate([
-            'store_id'        => 'required|exists:stores,id',
-            'report_type'     => 'required|in:orders,financials,ads,metrics',
-            'source_platform' => 'required|in:Shopee,TikTok Shop,Meta Ads',
-            'file'            => 'required|file|mimes:csv,xlsx,xls|max:10240',
+            'store_id'    => 'required|exists:stores,id',
+            'report_type' => 'required|in:orders,financials,ads,metrics',
+            'file'        => 'required|file|mimes:csv,xlsx,xls|max:20480',
         ]);
-
-        $file     = $request->file('file');
-        $filename = $file->getClientOriginalName();
-        $ext      = strtolower($file->getClientOriginalExtension());
-
-        $log = UploadLog::create([
-            'pic_id'          => Auth::user()->pic_id,
-            'store_id'        => $request->store_id,
-            'report_type'     => $request->report_type,
-            'source_platform' => $request->source_platform,
-            'filename'        => $filename,
-            'rows_parsed'     => 0,
-            'status'          => 'processing',
-            'uploaded_at'     => now(),
+        $file = $request->file('file');
+        $log  = UploadLog::create([
+            'store_id'    => $request->store_id,
+            'user_id'     => Auth::id(),
+            'report_type' => $request->report_type,
+            'filename'    => $file->getClientOriginalName(),
+            'status'      => 'processing',
+            'uploaded_at' => now(),
         ]);
-
         try {
-            $rows = $ext === 'csv' ? $this->parseCsv($file->getRealPath())
-                                   : $this->parseXlsx($file->getRealPath());
-
-            $count = $this->processRows(
-                $rows,
-                $request->report_type,
-                $request->source_platform,
-                $request->store_id
-            );
-
-            $log->update(['rows_parsed' => $count, 'status' => 'success']);
-            return back()->with('success', "File \"$filename\" berhasil diproses! ($count baris data diimpor)");
-
+            $ext  = strtolower($file->getClientOriginalExtension());
+            $rows = $ext === 'csv' ? $this->parseCsv($file->getRealPath()) : $this->parseXlsx($file->getRealPath());
+            $count= DB::transaction(fn() => $this->processRows($rows, $request->report_type, $request->store_id));
+            $log->update(['rows_imported'=>$count,'status'=>'success']);
+            return back()->with('success', "Berhasil mengimpor {$count} baris dari \"{$file->getClientOriginalName()}\".");
         } catch (\Throwable $e) {
-            $log->update(['status' => 'failed', 'error_message' => $e->getMessage()]);
-            return back()->with('error', 'Gagal memproses file: ' . $e->getMessage());
+            $log->update(['status'=>'failed','error_message'=>$e->getMessage()]);
+            return back()->with('error', 'Gagal: '.$e->getMessage());
         }
     }
+    public function destroy(UploadLog $log) {
+        $log->delete();
+        return back()->with('success', 'Log dihapus.');
+    }
 
-    // ── Parsers ─────────────────────────────────────────────────────────────
-
-    private function parseCsv(string $path): array
-    {
+    private function parseCsv(string $path): array {
         $rows = [];
-        if (($fh = fopen($path, 'r')) === false) throw new \RuntimeException('Tidak bisa membuka file.');
+        if (!($fh = fopen($path,'r'))) throw new \RuntimeException('Tidak bisa membuka file.');
         $headers = null;
-        while (($row = fgetcsv($fh, 0, ',')) !== false) {
-            if ($headers === null) { $headers = array_map('trim', $row); continue; }
-            if (count($row) === count($headers)) {
-                $rows[] = array_combine($headers, array_map('trim', $row));
-            }
+        while (($row = fgetcsv($fh,0,',')) !== false) {
+            if ($headers===null) { $headers=array_map('trim',$row); continue; }
+            if (count($row)===count($headers)) $rows[]=array_combine($headers,array_map('trim',$row));
         }
         fclose($fh);
         return $rows;
     }
 
-    private function parseXlsx(string $path): array
-    {
+    private function parseXlsx(string $path): array {
         $zip = new \ZipArchive();
-        if ($zip->open($path) !== true) throw new \RuntimeException('File XLSX tidak valid.');
-
-        // Parse shared strings using regex to avoid namespace issues
-        $sharedStrings = [];
-        $ssXml = $zip->getFromName('xl/sharedStrings.xml');
-        if ($ssXml) {
-            preg_match_all('/<si>(.*?)<\/si>/s', $ssXml, $siMatches);
-            foreach ($siMatches[1] as $si) {
-                // Collect all <t> text values within <si>
-                preg_match_all('/<t[^>]*>(.*?)<\/t>/s', $si, $tMatches);
-                $sharedStrings[] = implode('', array_map('html_entity_decode', $tMatches[1]));
+        if ($zip->open($path)!==true) throw new \RuntimeException('File XLSX tidak valid.');
+        $shared = [];
+        if ($ss=$zip->getFromName('xl/sharedStrings.xml')) {
+            preg_match_all('/<si>(.*?)<\/si>/s',$ss,$siM);
+            foreach ($siM[1] as $si) {
+                preg_match_all('/<t[^>]*>(.*?)<\/t>/s',$si,$tM);
+                $shared[]=html_entity_decode(implode('',$tM[1]),ENT_XML1,'UTF-8');
             }
         }
-
-        // Find first sheet
-        $sheetXml = null;
-        for ($i = 0; $i < $zip->numFiles; $i++) {
-            $name = $zip->getNameIndex($i);
-            if (preg_match('#xl/worksheets/sheet\d+\.xml#', $name)) {
-                $sheetXml = $zip->getFromIndex($i);
-                break;
-            }
+        $sheetXml=null;
+        for ($i=0;$i<$zip->numFiles;$i++) {
+            $name=$zip->getNameIndex($i);
+            if (preg_match('#xl/worksheets/sheet\d+\.xml#',$name)) { $sheetXml=$zip->getFromIndex($i); break; }
         }
         $zip->close();
         if (!$sheetXml) throw new \RuntimeException('Sheet tidak ditemukan dalam file XLSX.');
-
-        // Parse rows using regex
-        $rawRows = [];
-        preg_match_all('/<row[^>]*>(.*?)<\/row>/s', $sheetXml, $rowMatches);
-        foreach ($rowMatches[1] as $rowContent) {
-            $cells = [];
-            preg_match_all('/<c\s([^>]*)>(.*?)<\/c>/s', $rowContent, $cellMatches, PREG_SET_ORDER);
-            foreach ($cellMatches as $cell) {
-                $attrs = $cell[1];
-                $inner = $cell[2];
-                preg_match('/r="([^"]+)"/', $attrs, $rMatch);
-                preg_match('/t="([^"]+)"/', $attrs, $tMatch);
-                preg_match('/<v>(.*?)<\/v>/s', $inner, $vMatch);
-                $ref  = $rMatch[1] ?? '';
-                $col  = preg_replace('/[0-9]/', '', $ref);
-                $type = $tMatch[1] ?? '';
-                $val  = $vMatch[1] ?? '';
-                if ($type === 's') $val = $sharedStrings[(int)$val] ?? '';
-                if ($col !== '') $cells[$col] = $val;
+        $rawRows=[];
+        preg_match_all('/<row[^>]*>(.*?)<\/row>/s',$sheetXml,$rowM);
+        foreach ($rowM[1] as $rowContent) {
+            $cells=[];
+            preg_match_all('/<c\s([^>]*)>(.*?)<\/c>/s',$rowContent,$cellM,PREG_SET_ORDER);
+            foreach ($cellM as $cell) {
+                preg_match('/r="([^"]+)"/',$cell[1],$rM);
+                preg_match('/t="([^"]+)"/',$cell[1],$tM);
+                preg_match('/<v>(.*?)<\/v>/s',$cell[2],$vM);
+                $col=preg_replace('/[0-9]/','', $rM[1]??'');
+                $type=$tM[1]??''; $val=$vM[1]??'';
+                if ($type==='s') $val=$shared[(int)$val]??'';
+                if ($col!=='') $cells[$col]=trim($val);
             }
-            if (!empty($cells)) $rawRows[] = $cells;
+            if (!empty($cells)) $rawRows[]=$cells;
         }
-
         if (empty($rawRows)) return [];
-        $headerRow = array_shift($rawRows);
-        $colKeys   = array_keys($headerRow);
-        $headers   = array_values($headerRow);
-
-        $rows = [];
+        $headerRow=array_shift($rawRows);
+        $colKeys=array_keys($headerRow); $headers=array_values($headerRow);
+        $rows=[];
         foreach ($rawRows as $raw) {
-            $mapped = [];
-            foreach ($colKeys as $i => $col) {
-                $mapped[$headers[$i]] = $raw[$col] ?? '';
-            }
-            $rows[] = $mapped;
+            $mapped=[];
+            foreach ($colKeys as $i=>$col) $mapped[$headers[$i]]=$raw[$col]??'';
+            $rows[]=$mapped;
         }
         return $rows;
     }
 
-    // ── Processors ──────────────────────────────────────────────────────────
-
-    private function processRows(array $rows, string $type, string $platform, int $storeId): int
-    {
-        return match ($type) {
-            'orders'     => $this->processOrders($rows, $storeId, $platform),
-            'financials' => $this->processFinancials($rows, $storeId),
-            'ads'        => $this->processAds($rows, $storeId, $platform),
-            'metrics'    => $this->processMetrics($rows, $storeId),
+    private function processRows(array $rows, string $type, int $storeId): int {
+        $store = Store::findOrFail($storeId);
+        return match($type) {
+            'orders'     => $this->processOrders($rows, $store),
+            'financials' => $this->processFinancials($rows, $store),
+            'ads'        => $this->processAds($rows, $store),
+            'metrics'    => $this->processMetrics($rows, $store),
             default      => 0,
         };
     }
 
-    private function processOrders(array $rows, int $storeId, string $platform): int
-    {
-        $store = Store::find($storeId);
-        $count = 0;
+    private function processOrders(array $rows, Store $store): int {
+        $count=0;
         foreach ($rows as $row) {
-            $row = array_change_key_case($row, CASE_LOWER);
-
-            $orderId = $this->col($row, ['no. pesanan','order id','order_id','nomor pesanan','no pesanan']) ?? 'AUTO-'.uniqid();
-            $dateRaw = $this->col($row, ['waktu pesanan dibuat','order time','tanggal','date','order date','create time','waktu pembayaran dilakukan']);
-            $gmv     = $this->toNumber($this->col($row, ['subtotal pesanan','harga setelah diskon','total harga produk','gmv','total pesanan','total pembayaran','total price','price','harga']));
-            $qty     = (int)($this->toNumber($this->col($row, ['jumlah','qty','quantity','jumlah produk di pesan'])) ?: 1);
-            $sku     = $this->col($row, ['sku induk','nomor referensi sku','sku','product sku','sku referensi']) ?? '-';
-            $name    = $this->col($row, ['nama produk','product name','nama barang','item name']) ?? '-';
-            $buyer   = $this->col($row, ['username (pembeli)','buyer','username','buyer username','nama pembeli']) ?? 'unknown';
-            $status  = $this->mapStatus($this->col($row, ['status pesanan','status','order status']) ?? 'complete');
-
+            $row=array_change_key_case($row,CASE_LOWER);
+            $orderNum=$this->col($row,['no. pesanan','order id','order_id','nomor pesanan','no pesanan']);
+            if (!$orderNum) continue;
+            if (Order::where('order_number',$orderNum)->exists()) continue;
+            $dateRaw=$this->col($row,['waktu pesanan dibuat','waktu pembayaran dilakukan','order time','tanggal','date','order date','create time']);
             if (!$dateRaw) continue;
-            try { $date = Carbon::parse($dateRaw)->toDateString(); }
-            catch (\Exception $e) { continue; }
-
-            if (Order::where('order_id', $orderId)->exists()) continue;
-
-            $isNew = !Customer::where('buyer_identifier', $buyer)->where('platform', $platform)->exists();
-            $customer = Customer::firstOrCreate(
-                ['buyer_identifier' => $buyer, 'platform' => $platform],
-                ['first_order_date' => $date, 'first_store_id' => $storeId, 'total_orders' => 0, 'last_order_date' => $date]
+            try { $date=Carbon::parse($dateRaw)->toDateString(); } catch(\Exception $e){ continue; }
+            $gmv    =$this->num($this->col($row,['subtotal pesanan','harga setelah diskon','total harga produk','gmv','total pesanan','total pembayaran','total price','price']));
+            $qty    =(int)($this->num($this->col($row,['jumlah','qty','quantity','jumlah produk di pesan']))?:1);
+            $sku    =$this->col($row,['sku induk','nomor referensi sku','sku','product sku'])??'-';
+            $name   =$this->col($row,['nama produk','product name','nama barang','item name'])??'-';
+            $buyer  =$this->col($row,['username (pembeli)','buyer','username','buyer username','nama pembeli'])?? 'unknown';
+            $status =$this->mapStatus($this->col($row,['status pesanan','status','order status'])?? 'complete');
+            $isNew  =!Customer::where('username',$buyer)->where('platform',$store->platform)->exists();
+            $customer=Customer::firstOrCreate(
+                ['username'=>$buyer,'platform'=>$store->platform],
+                ['first_order_date'=>$date,'first_store_id'=>$store->id,'total_orders'=>0,'last_order_date'=>$date]
             );
             $customer->increment('total_orders');
-            $customer->update(['last_order_date' => $date]);
+            $customer->update(['last_order_date'=>$date]);
+            Order::create(['order_number'=>$orderNum,'store_id'=>$store->id,'customer_id'=>$customer->id,'order_date'=>$date,'gmv'=>$gmv,'status'=>$status,'product_sku'=>$sku,'product_name'=>$name,'qty'=>$qty,'is_new_customer'=>$isNew,'source_platform'=>$store->platform]);
+            $count++;
+        }
+        return $count;
+    }
 
-            Order::create([
-                'order_id'        => $orderId,
-                'store_id'        => $storeId,
-                'date'            => $date,
-                'gmv'             => $gmv,
-                'status'          => $status,
-                'product_sku'     => $sku,
-                'product_name'    => $name,
-                'qty'             => $qty,
-                'buyer_identifier'=> $buyer,
-                'is_new_customer' => $isNew,
-                'customer_id'     => $customer->id,
-                'channel_type'    => $store->channel_type,
-                'source_platform' => $platform,
+    private function processFinancials(array $rows, Store $store): int {
+        $count=0;
+        foreach ($rows as $row) {
+            $row=array_change_key_case($row,CASE_LOWER);
+            $period=$this->col($row,['periode','period','bulan','month'])?? '';
+            if (!$period) continue;
+            try { $period=Carbon::parse($period)->format('Y-m'); } catch(\Exception $e){ continue; }
+            $gross=$this->num($this->col($row,['gross gmv','total gmv','gmv']));
+            $net  =$this->num($this->col($row,['net gmv','pendapatan bersih']));
+            $admin=$this->num($this->col($row,['biaya admin','admin fee','biaya layanan']));
+            $ads  =$this->num($this->col($row,['biaya iklan','ads spend','iklan']));
+            $cogs =$this->num($this->col($row,['hpp','cogs','harga pokok']));
+            $ops  =$this->num($this->col($row,['biaya operasional','operational']));
+            $netGmv=$net?:($gross-$admin);
+            Financial::updateOrCreate(['store_id'=>$store->id,'period'=>$period],[
+                'gross_gmv'=>$gross,'net_gmv'=>$netGmv,'admin_fee'=>$admin,
+                'promo_fee'=>$this->num($this->col($row,['promo','promo xtra','voucher'])),
+                'shipping_fee'=>$this->num($this->col($row,['ongkir','shipping fee','biaya kirim'])),
+                'settlement'=>$this->num($this->col($row,['settlement','pencairan']))?:$netGmv,
+                'cogs'=>$cogs,'ads_spend'=>$ads,'operational_cost'=>$ops,
+                'gross_profit'=>$netGmv-$cogs,'net_profit'=>$netGmv-$cogs-$ads-$ops,
             ]);
             $count++;
         }
         return $count;
     }
 
-    private function processFinancials(array $rows, int $storeId): int
-    {
-        $count = 0;
+    private function processAds(array $rows, Store $store): int {
+        $count=0;
         foreach ($rows as $row) {
-            $row    = array_change_key_case($row, CASE_LOWER);
-            $period = $this->col($row, ['periode','period','bulan','month']) ?? '';
-            if (!$period) continue;
-            try { $period = Carbon::parse($period)->format('Y-m'); }
-            catch (\Exception $e) { continue; }
-
-            $grossGmv = $this->toNumber($this->col($row, ['gross gmv','total gmv','gmv']));
-            $netGmv   = $this->toNumber($this->col($row, ['net gmv','pendapatan bersih']));
-            $adminFee = $this->toNumber($this->col($row, ['biaya admin','admin fee','biaya layanan']));
-            $ads      = $this->toNumber($this->col($row, ['biaya iklan','ads spend','iklan']));
-            $hpp      = $this->toNumber($this->col($row, ['hpp','cogs','harga pokok']));
-            $ops      = $this->toNumber($this->col($row, ['biaya operasional','operational']));
-
-            Financial::updateOrCreate(
-                ['store_id' => $storeId, 'period' => $period],
-                [
-                    'gross_gmv'        => $grossGmv,
-                    'net_gmv'          => $netGmv ?: ($grossGmv - $adminFee),
-                    'admin_fee'        => $adminFee,
-                    'promo_xtra'       => $this->toNumber($this->col($row, ['promo','promo xtra','voucher'])),
-                    'ongkir_fee'       => $this->toNumber($this->col($row, ['ongkir','shipping fee','biaya kirim'])),
-                    'settlement'       => $this->toNumber($this->col($row, ['settlement','pencairan'])) ?: $netGmv,
-                    'hpp_total'        => $hpp,
-                    'ads_spend'        => $ads,
-                    'operational_cost' => $ops,
-                    'gross_profit'     => ($netGmv ?: $grossGmv) - $hpp,
-                    'net_profit'       => ($netGmv ?: $grossGmv) - $hpp - $ads - $ops,
-                ]
-            );
-            $count++;
-        }
-        return $count;
-    }
-
-    private function processAds(array $rows, int $storeId, string $platform): int
-    {
-        $count = 0;
-        foreach ($rows as $row) {
-            $row     = array_change_key_case($row, CASE_LOWER);
-            $dateRaw = $this->col($row, ['tanggal','date','waktu','time','report date']);
+            $row=array_change_key_case($row,CASE_LOWER);
+            $dateRaw=$this->col($row,['tanggal','date','waktu','time','report date']);
             if (!$dateRaw) continue;
-            try { $date = Carbon::parse($dateRaw)->toDateString(); }
-            catch (\Exception $e) { continue; }
-
-            $spend = $this->toNumber($this->col($row, ['pengeluaran iklan','spend','biaya','cost','amount spent']));
-            $gmv   = $this->toNumber($this->col($row, ['gmv dari iklan','gmv','revenue','purchase value','conversion value']));
-            $impr  = (int)$this->toNumber($this->col($row, ['tayangan','impressions','impresi']));
-            $klik  = (int)$this->toNumber($this->col($row, ['klik','clicks','click']));
-            $roas  = $spend > 0 ? round($gmv / $spend, 2) : 0;
-
-            AdsPerformance::updateOrCreate(
-                ['store_id' => $storeId, 'date' => $date, 'platform' => $platform],
-                [
-                    'spend'        => $spend,
-                    'impressi'     => $impr,
-                    'klik'         => $klik,
-                    'gmv_from_ads' => $gmv,
-                    'roas'         => $roas,
-                    'reach'        => (int)$this->toNumber($this->col($row, ['jangkauan','reach'])),
-                    'konversi'     => (int)$this->toNumber($this->col($row, ['konversi','conversions','purchase'])),
-                    'campaign_name'=> $this->col($row, ['nama kampanye','campaign name','campaign']) ?? '-',
-                ]
-            );
+            try { $date=Carbon::parse($dateRaw)->toDateString(); } catch(\Exception $e){ continue; }
+            $spend=$this->num($this->col($row,['pengeluaran iklan','spend','biaya','cost','amount spent']));
+            $gmv  =$this->num($this->col($row,['gmv dari iklan','gmv','revenue','purchase value','conversion value']));
+            AdsPerformance::updateOrCreate(['store_id'=>$store->id,'date'=>$date,'platform'=>$store->platform],[
+                'spend'=>$spend,'impressions'=>(int)$this->num($this->col($row,['tayangan','impressions','impresi'])),
+                'clicks'=>(int)$this->num($this->col($row,['klik','clicks','click'])),
+                'gmv_from_ads'=>$gmv,'roas'=>$spend>0?round($gmv/$spend,2):0,
+                'reach'=>(int)$this->num($this->col($row,['jangkauan','reach'])),
+                'conversions'=>(int)$this->num($this->col($row,['konversi','conversions','purchase'])),
+                'campaign_name'=>$this->col($row,['nama kampanye','campaign name','campaign'])??'-',
+            ]);
             $count++;
         }
         return $count;
     }
 
-    private function processMetrics(array $rows, int $storeId): int
-    {
-        $count = 0;
+    private function processMetrics(array $rows, Store $store): int {
+        $count=0;
         foreach ($rows as $row) {
-            $row     = array_change_key_case($row, CASE_LOWER);
-            $dateRaw = $this->col($row, ['tanggal','date','waktu']);
+            $row=array_change_key_case($row,CASE_LOWER);
+            $dateRaw=$this->col($row,['tanggal','date','waktu']);
             if (!$dateRaw) continue;
-            try { $date = Carbon::parse($dateRaw)->toDateString(); }
-            catch (\Exception $e) { continue; }
-
-            $views    = (int)$this->toNumber($this->col($row, ['tayangan produk','views','page views','kunjungan']));
-            $visitors = (int)$this->toNumber($this->col($row, ['pengunjung','visitors','unique visitors']));
-            $atc      = (int)$this->toNumber($this->col($row, ['tambah ke keranjang','add to cart','atc']));
-            $checkout = (int)$this->toNumber($this->col($row, ['checkout','bayar']));
-            $buyers   = (int)$this->toNumber($this->col($row, ['pembeli','buyers','orders']));
-            $cvr      = $visitors > 0 ? round($buyers / $visitors * 100, 4) : 0;
-            $atcRate  = $visitors > 0 ? round($atc / $visitors * 100, 4) : 0;
-
-            StoreMetric::updateOrCreate(
-                ['store_id' => $storeId, 'date' => $date],
-                compact('views', 'visitors', 'atc', 'checkout', 'buyers', 'cvr', 'atcRate') + ['atc_rate' => $atcRate]
-            );
+            try { $date=Carbon::parse($dateRaw)->toDateString(); } catch(\Exception $e){ continue; }
+            $views=$this->num($this->col($row,['tayangan produk','views','page views','kunjungan']));
+            $visitors=$this->num($this->col($row,['pengunjung','visitors','unique visitors']));
+            $atc=$this->num($this->col($row,['tambah ke keranjang','add to cart','atc']));
+            $checkout=$this->num($this->col($row,['checkout','bayar']));
+            $buyers=$this->num($this->col($row,['pembeli','buyers','orders']));
+            StoreMetric::updateOrCreate(['store_id'=>$store->id,'date'=>$date],[
+                'views'=>(int)$views,'visitors'=>(int)$visitors,'add_to_cart'=>(int)$atc,
+                'checkout'=>(int)$checkout,'buyers'=>(int)$buyers,
+                'cvr'=>$visitors>0?round($buyers/$visitors*100,4):0,
+                'atc_rate'=>$visitors>0?round($atc/$visitors*100,4):0,
+            ]);
             $count++;
         }
         return $count;
     }
 
-    // ── Helpers ─────────────────────────────────────────────────────────────
-
-    private function col(array $row, array $keys): ?string
-    {
-        foreach ($keys as $k) {
-            if (isset($row[$k]) && $row[$k] !== '') return $row[$k];
-        }
+    private function col(array $row, array $keys): ?string {
+        foreach ($keys as $k) { if (isset($row[$k])&&$row[$k]!=='') return $row[$k]; }
         return null;
     }
-
-    private function toNumber(?string $val): float
-    {
-        if ($val === null || trim($val) === '') return 0;
-        $val = trim($val);
-        // Indonesian format: 249.000 or 1.234.567 (dots as thousands separator)
-        if (preg_match('/^\d{1,3}(\.\d{3})+(,\d+)?$/', $val)) {
-            $val = str_replace('.', '', $val);
-            $val = str_replace(',', '.', $val);
-            return (float)$val;
+    private function num(?string $v): float {
+        if ($v===null||trim($v)==='') return 0;
+        $v=trim($v);
+        if (preg_match('/^\d{1,3}(\.\d{3})+(,\d+)?$/',$v)) {
+            return (float)str_replace(['.', ','], ['', '.'], $v);
         }
-        // Western/mixed format: remove thousand separators, normalize decimal
-        $val = str_replace(',', '.', $val);
-        return (float)preg_replace('/[^0-9.\-]/', '', $val);
+        return (float)preg_replace('/[^0-9.\-]/','',str_replace(',','.',$v));
     }
-
-    private function mapStatus(string $raw): string
-    {
-        $raw = strtolower(trim($raw));
-        if (str_contains($raw, 'selesai') || str_contains($raw, 'complete') || str_contains($raw, 'delivered') || str_contains($raw, 'completed')) return 'complete';
-        if (str_contains($raw, 'batal') || str_contains($raw, 'cancel')) return 'cancel';
-        if (str_contains($raw, 'retur') || str_contains($raw, 'return')) return 'returned';
-        if (str_contains($raw, 'refund')) return 'refunded';
-        if (str_contains($raw, 'kirim') || str_contains($raw, 'shipped') || str_contains($raw, 'shipping') || str_contains($raw, 'pengiriman')) return 'shipped';
-        if (str_contains($raw, 'proses') || str_contains($raw, 'process') || str_contains($raw, 'packing') || str_contains($raw, 'dikemas')) return 'processing';
-        if (str_contains($raw, 'paid') || str_contains($raw, 'dibayar') || str_contains($raw, 'unpaid') || str_contains($raw, 'pending')) return 'pending';
-        return 'complete'; // default: anggap selesai jika tidak dikenal
+    private function mapStatus(string $raw): string {
+        $r=strtolower(trim($raw));
+        if (str_contains($r,'selesai')||str_contains($r,'complete')||str_contains($r,'delivered')||str_contains($r,'completed')) return 'complete';
+        if (str_contains($r,'batal')||str_contains($r,'cancel')) return 'cancelled';
+        if (str_contains($r,'retur')||str_contains($r,'return')) return 'returned';
+        if (str_contains($r,'refund')) return 'refunded';
+        if (str_contains($r,'kirim')||str_contains($r,'shipped')||str_contains($r,'shipping')||str_contains($r,'pengiriman')) return 'shipped';
+        if (str_contains($r,'proses')||str_contains($r,'process')||str_contains($r,'packing')||str_contains($r,'dikemas')) return 'processing';
+        return 'complete';
     }
 }

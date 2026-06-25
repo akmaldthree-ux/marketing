@@ -1,74 +1,59 @@
 @extends('layouts.app')
-@section('title', 'ROAS Detail — DSM Intelligence')
-@section('page-title', 'ROAS Detail')
-@section('breadcrumb')<li class="breadcrumb-item active">ROAS Detail</li>@endsection
-
-@section('header-actions')
-<form class="d-flex gap-2" method="GET">
-    <select name="brand" class="form-select form-select-sm" style="width:120px;" onchange="this.form.submit()">
-        <option value="all" {{ $brand==='all'?'selected':'' }}>Semua Brand</option>
-        @foreach(['DTHREE','HURIM','ASFARA'] as $b)
-        <option value="{{ $b }}" {{ $brand===$b?'selected':'' }}>{{ $b }}</option>
-        @endforeach
-    </select>
-    <input type="month" name="month" class="form-control form-control-sm" value="{{ $month }}" onchange="this.form.submit()" style="width:150px;">
-</form>
-@endsection
-
+@section('title','ROAS & Iklan')
+@section('page-title','ROAS & Performa Iklan')
 @section('content')
-<!-- Platform Summary -->
+<form method="GET" class="d-flex gap-2 align-items-center mb-4 flex-wrap">
+  <input type="month" name="month" value="{{ $month }}" class="form-control form-control-sm" style="width:160px">
+  <select name="platform" class="form-select form-select-sm" style="width:160px">
+    <option value="all" {{ $platform==='all'?'selected':'' }}>Semua Platform</option>
+    @foreach(['Shopee','TikTok Shop','Meta Ads'] as $p)<option value="{{ $p }}" {{ $platform===$p?'selected':'' }}>{{ $p }}</option>@endforeach
+  </select>
+  <button class="btn btn-primary btn-sm px-3">Filter</button>
+</form>
+
 <div class="row g-3 mb-4">
-    @foreach($platformBreakdown as $plat => $pb)
-    <div class="col-md-4">
-        <div class="metric-card">
-            <div class="metric-label mb-2">{{ $plat }}</div>
-            <div class="row">
-                <div class="col-4 text-center">
-                    <div class="small text-muted">Spend</div>
-                    <div class="num fw-bold" style="font-size:0.9rem;">Rp {{ number_format($pb['spend']/1e6,1) }}Jt</div>
-                </div>
-                <div class="col-4 text-center border-start border-end">
-                    <div class="small text-muted">GMV Ads</div>
-                    <div class="num fw-bold" style="font-size:0.9rem;">Rp {{ number_format($pb['gmv']/1e6,1) }}Jt</div>
-                </div>
-                <div class="col-4 text-center">
-                    <div class="small text-muted">ROAS</div>
-                    <div class="num fw-bold fs-5 {{ $pb['roas'] >= 3 ? 'text-success' : ($pb['roas'] >= 2 ? 'text-warning' : 'text-danger') }}">{{ $pb['roas'] }}x</div>
-                </div>
-            </div>
-        </div>
+  <div class="col-sm-4">
+    <div class="stat-card">
+      <div class="label">Total Spend</div>
+      <div class="value">Rp {{ number_format($totalSpend/1000000,2) }}jt</div>
     </div>
-    @endforeach
+  </div>
+  <div class="col-sm-4">
+    <div class="stat-card">
+      <div class="label">GMV dari Iklan</div>
+      <div class="value">Rp {{ number_format($totalGmv/1000000,2) }}jt</div>
+    </div>
+  </div>
+  <div class="col-sm-4">
+    <div class="stat-card">
+      <div class="label">Blended ROAS</div>
+      <div class="value">{{ $blendedRoas }}x</div>
+    </div>
+  </div>
 </div>
 
-<!-- Per Store ROAS Table -->
-<div class="section-card">
-    <div class="section-card-header">
-        <h6><i class="bi bi-table me-2"></i>ROAS Per Toko</h6>
-        <span class="text-muted small">Target ROAS: ≥ 3x</span>
-    </div>
-    <div class="table-responsive">
-        <table class="table mb-0">
-            <thead><tr><th>Toko</th><th>Brand</th><th>Platform</th><th class="text-end">Total Spend</th><th class="text-end">GMV dari Iklan</th><th class="text-end">ROAS</th><th class="text-end">Status</th></tr></thead>
-            <tbody>
-                @foreach($roasData->sortByDesc('roas') as $rd)
-                <tr>
-                    <td class="fw-semibold">{{ $rd['store']->store_name }}</td>
-                    <td><span class="brand-{{ $rd['store']->brand }}">{{ $rd['store']->brand }}</span></td>
-                    <td><span class="badge bg-light text-dark border">{{ $rd['store']->platform }}</span></td>
-                    <td class="text-end num">Rp {{ number_format($rd['spend']/1e6,1) }}Jt</td>
-                    <td class="text-end num">Rp {{ number_format($rd['gmvFromAds']/1e6,1) }}Jt</td>
-                    <td class="text-end num fw-bold fs-6 {{ $rd['roas'] >= 3 ? 'text-success' : ($rd['roas'] >= 2 ? 'text-warning' : 'text-danger') }}">{{ $rd['roas'] }}x</td>
-                    <td class="text-end">
-                        @if($rd['roas'] >= 3) <span class="badge bg-success">On Target</span>
-                        @elseif($rd['roas'] >= 2) <span class="badge bg-warning text-dark">At Risk</span>
-                        @else <span class="badge bg-danger">Below Target</span>
-                        @endif
-                    </td>
-                </tr>
-                @endforeach
-            </tbody>
-        </table>
-    </div>
+<div class="card">
+  <div class="card-header">Performa Iklan per Toko</div>
+  <div class="card-body p-0">
+    <table class="table table-hover mb-0">
+      <thead class="table-light"><tr><th>Toko</th><th>Brand</th><th class="text-end">Spend</th><th class="text-end">GMV Ads</th><th class="text-end">ROAS</th><th class="text-end">Impressi</th><th class="text-end">Klik</th><th class="text-end">Konversi</th></tr></thead>
+      <tbody>
+      @forelse($byStore as $row)
+      <tr>
+        <td class="fw-semibold">{{ $row['store']?->name ?? '-' }}</td>
+        <td><span class="badge badge-brand-{{ $row['store']?->brand }}">{{ $row['store']?->brand }}</span></td>
+        <td class="text-end">Rp {{ number_format($row['spend']/1000000,2) }}jt</td>
+        <td class="text-end">Rp {{ number_format($row['gmv']/1000000,2) }}jt</td>
+        <td class="text-end fw-bold {{ $row['roas']>=3?'text-success':($row['roas']>=1.5?'text-warning':'text-danger') }}">{{ $row['roas'] }}x</td>
+        <td class="text-end">{{ number_format($row['impressions']) }}</td>
+        <td class="text-end">{{ number_format($row['clicks']) }}</td>
+        <td class="text-end">{{ number_format($row['conversions']) }}</td>
+      </tr>
+      @empty
+      <tr><td colspan="8" class="text-center text-muted py-4">Tidak ada data iklan</td></tr>
+      @endforelse
+      </tbody>
+    </table>
+  </div>
 </div>
 @endsection

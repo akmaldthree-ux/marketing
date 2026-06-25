@@ -1,101 +1,73 @@
 <?php
 namespace App\Http\Controllers;
-
-use App\Models\{Store, Order, AdsPerformance, Target, AppNotification, StoreMetric};
+use App\Models\{Store, Order, AdsPerformance, Target, StoreMetric};
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\{Auth, DB};
 use Carbon\Carbon;
-
-class DashboardController extends Controller
-{
-    // Statuses that count as valid GMV (exclude cancelled & returned)
-    private array $gmvStatuses = ['complete', 'shipped', 'processing', 'pending'];
-
-    public function index(Request $request)
-    {
-        $month = $request->get('month', now()->format('Y-m'));
-        $brand = $request->get('brand', 'all');
-        $platform = $request->get('platform', 'all');
-
-        $storeQuery = Store::query()->where('is_active', true);
-        if ($brand !== 'all') $storeQuery->where('brand', $brand);
-        if ($platform !== 'all') $storeQuery->where('platform', $platform);
-        $storeIds = $storeQuery->pluck('id');
-
+class DashboardController extends Controller {
+    public function index(Request $request) {
+        $month    = $request->get('month', now()->format('Y-m'));
+        $brand    = $request->get('brand', 'all');
         [$year, $mon] = explode('-', $month);
-        $startDate = Carbon::create($year, $mon, 1)->startOfMonth();
-        $endDate = Carbon::create($year, $mon, 1)->endOfMonth();
-        $prevStart = $startDate->copy()->subMonth();
-        $prevEnd = $prevStart->copy()->endOfMonth();
+        $start    = Carbon::create($year, $mon, 1)->startOfMonth();
+        $end      = Carbon::create($year, $mon, 1)->endOfMonth();
+        $prevStart= $start->copy()->subMonth()->startOfMonth();
+        $prevEnd  = $start->copy()->subMonth()->endOfMonth();
 
-        // Current period
-        $totalGmv = Order::whereIn('store_id', $storeIds)->whereIn('status', $this->gmvStatuses)
-            ->whereBetween('date', [$startDate, $endDate])->sum('gmv');
-        $totalSpend = AdsPerformance::whereIn('store_id', $storeIds)
-            ->whereBetween('date', [$startDate, $endDate])->sum('spend');
-        $totalGmvFromAds = AdsPerformance::whereIn('store_id', $storeIds)
-            ->whereBetween('date', [$startDate, $endDate])->sum('gmv_from_ads');
-        $blendedRoas = $totalSpend > 0 ? round($totalGmvFromAds / $totalSpend, 2) : 0;
+        $storeIds = $this->storeIds($brand);
+        $gmvStatuses = Order::gmvStatuses();
 
-        $totalOrders = Order::whereIn('store_id', $storeIds)->whereBetween('date', [$startDate, $endDate])->count();
-        $cancelOrders = Order::whereIn('store_id', $storeIds)->whereIn('status', ['cancel', 'returned', 'refunded'])
-            ->whereBetween('date', [$startDate, $endDate])->count();
-        $cancelRate = $totalOrders > 0 ? round(($cancelOrders / $totalOrders) * 100, 2) : 0;
+        $totalGmv   = Order::whereIn('store_id',$storeIds)->whereIn('status',$gmvStatuses)->whereBetween('order_date',[$start,$end])->sum('gmv');
+        $prevGmv    = Order::whereIn('store_id',$storeIds)->whereIn('status',$gmvStatuses)->whereBetween('order_date',[$prevStart,$prevEnd])->sum('gmv');
+        $gmvDelta   = $prevGmv > 0 ? round((($totalGmv-$prevGmv)/$prevGmv)*100,1) : null;
 
-        $totalVisitors = StoreMetric::whereIn('store_id', $storeIds)->whereBetween('date', [$startDate, $endDate])->sum('visitors');
-        $totalBuyers = StoreMetric::whereIn('store_id', $storeIds)->whereBetween('date', [$startDate, $endDate])->sum('buyers');
-        $avgCvr = $totalVisitors > 0 ? round(($totalBuyers / $totalVisitors) * 100, 2) : 0;
+        $totalOrders  = Order::whereIn('store_id',$storeIds)->whereBetween('order_date',[$start,$end])->count();
+        $cancelOrders = Order::whereIn('store_id',$storeIds)->whereIn('status',['cancelled','returned','refunded'])->whereBetween('order_date',[$start,$end])->count();
+        $cancelRate   = $totalOrders > 0 ? round($cancelOrders/$totalOrders*100,2) : 0;
 
-        // Previous period
-        $prevGmv = Order::whereIn('store_id', $storeIds)->whereIn('status', $this->gmvStatuses)
-            ->whereBetween('date', [$prevStart, $prevEnd])->sum('gmv');
-        $gmvDelta = $prevGmv > 0 ? round((($totalGmv - $prevGmv) / $prevGmv) * 100, 1) : 0;
+        $totalSpend      = AdsPerformance::whereIn('store_id',$storeIds)->whereBetween('date',[$start,$end])->sum('spend');
+        $totalGmvFromAds = AdsPerformance::whereIn('store_id',$storeIds)->whereBetween('date',[$start,$end])->sum('gmv_from_ads');
+        $blendedRoas     = $totalSpend > 0 ? round($totalGmvFromAds/$totalSpend,2) : 0;
 
-        // GMV Trend (daily)
-        $gmvTrend = Order::whereIn('store_id', $storeIds)->whereIn('status', $this->gmvStatuses)
-            ->whereBetween('date', [$startDate, $endDate])
-            ->select(DB::raw('date(date) as day'), DB::raw('sum(gmv) as total'))
+        $totalVisitors = StoreMetric::whereIn('store_id',$storeIds)->whereBetween('date',[$start,$end])->sum('visitors');
+        $totalBuyers   = StoreMetric::whereIn('store_id',$storeIds)->whereBetween('date',[$start,$end])->sum('buyers');
+        $avgCvr        = $totalVisitors > 0 ? round($totalBuyers/$totalVisitors*100,2) : 0;
+
+        $gmvTrend = Order::whereIn('store_id',$storeIds)->whereIn('status',$gmvStatuses)
+            ->whereBetween('order_date',[$start,$end])
+            ->select(DB::raw('DATE(order_date) as day'), DB::raw('SUM(gmv) as total'))
             ->groupBy('day')->orderBy('day')->get();
 
-        // Brand progress
-        $brands = ['DTHREE', 'HURIM', 'ASFARA'];
         $brandProgress = [];
-        foreach ($brands as $b) {
-            $bStoreIds = Store::where('brand', $b)->where('is_active', true)->pluck('id');
-            $actual = Order::whereIn('store_id', $bStoreIds)->whereIn('status', $this->gmvStatuses)
-                ->whereBetween('date', [$startDate, $endDate])->sum('gmv');
-            $target = Target::whereIn('store_id', $bStoreIds)->where('month', $mon)->where('year', $year)->sum('gmv_target');
-            $brandProgress[$b] = ['actual' => $actual, 'target' => $target, 'pct' => $target > 0 ? min(100, round(($actual / $target) * 100, 1)) : 0];
+        foreach (['DTHREE','HURIM','ASFARA'] as $b) {
+            $bIds    = Store::where('brand',$b)->where('is_active',true)->pluck('id');
+            $actual  = Order::whereIn('store_id',$bIds)->whereIn('status',$gmvStatuses)->whereBetween('order_date',[$start,$end])->sum('gmv');
+            $target  = Target::whereIn('store_id',$bIds)->where('month',$mon)->where('year',$year)->sum('gmv_target');
+            $brandProgress[$b] = ['actual'=>$actual,'target'=>$target,'pct'=>$target>0?min(100,round($actual/$target*100,1)):0];
         }
 
-        // Store leaderboard
-        $leaderboard = Store::whereIn('id', $storeIds)->with('pic')->get()->map(function ($store) use ($startDate, $endDate) {
-            $gmv = Order::where('store_id', $store->id)->whereIn('status', $this->gmvStatuses)
-                ->whereBetween('date', [$startDate, $endDate])->sum('gmv');
-            return ['store' => $store, 'gmv' => $gmv];
+        $leaderboard = Store::whereIn('id',$storeIds)->with('pic')->get()->map(function($s) use($start,$end,$gmvStatuses){
+            return ['store'=>$s,'gmv'=>Order::where('store_id',$s->id)->whereIn('status',$gmvStatuses)->whereBetween('order_date',[$start,$end])->sum('gmv')];
         })->sortByDesc('gmv')->values();
 
-        // MP vs Non-MP GMV (last 6 months)
-        $mpVsNonMp = [];
-        for ($i = 5; $i >= 0; $i--) {
+        $trendMonths = [];
+        for ($i=5;$i>=0;$i--) {
             $d = now()->subMonths($i);
-            $mpIds = Store::where('channel_type', 'mp')->pluck('id');
-            $nonMpIds = Store::where('channel_type', 'non_mp')->pluck('id');
-            $mpVsNonMp[] = [
-                'month' => $d->format('M Y'),
-                'mp' => Order::whereIn('store_id', $mpIds)->whereIn('status', $this->gmvStatuses)
-                    ->whereYear('date', $d->year)->whereMonth('date', $d->month)->sum('gmv'),
-                'non_mp' => Order::whereIn('store_id', $nonMpIds)->whereIn('status', $this->gmvStatuses)
-                    ->whereYear('date', $d->year)->whereMonth('date', $d->month)->sum('gmv'),
+            $mpIds    = Store::where('channel_type','marketplace')->pluck('id');
+            $nonMpIds = Store::where('channel_type','non_marketplace')->pluck('id');
+            $trendMonths[] = [
+                'label'  => $d->format('M Y'),
+                'mp'     => Order::whereIn('store_id',$mpIds)->whereIn('status',$gmvStatuses)->whereYear('order_date',$d->year)->whereMonth('order_date',$d->month)->sum('gmv'),
+                'non_mp' => Order::whereIn('store_id',$nonMpIds)->whereIn('status',$gmvStatuses)->whereYear('order_date',$d->year)->whereMonth('order_date',$d->month)->sum('gmv'),
             ];
         }
 
-        $notifications = AppNotification::where('is_read', false)->orderByDesc('created_at')->limit(5)->get();
+        return view('dashboard.index', compact('totalGmv','prevGmv','gmvDelta','totalOrders','cancelRate','blendedRoas','avgCvr','gmvTrend','brandProgress','leaderboard','trendMonths','month','brand','year','mon'));
+    }
 
-        return view('dashboard.index', compact(
-            'totalGmv', 'totalSpend', 'blendedRoas', 'cancelRate', 'avgCvr', 'gmvDelta',
-            'gmvTrend', 'brandProgress', 'leaderboard', 'mpVsNonMp', 'notifications',
-            'month', 'brand', 'platform'
-        ));
+    private function storeIds(string $brand) {
+        $q = Store::where('is_active', true);
+        if ($brand !== 'all') $q->where('brand', $brand);
+        return $q->pluck('id');
     }
 }
