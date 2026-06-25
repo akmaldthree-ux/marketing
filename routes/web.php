@@ -22,6 +22,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/roas', [RoasController::class, 'index'])->name('roas');
     Route::get('/funnel', [FunnelController::class, 'index'])->name('funnel');
     Route::get('/pnl', [PnlController::class, 'index'])->name('pnl');
+    Route::post('/pnl/ops', [PnlController::class, 'saveOps'])->name('pnl.saveOps');
     Route::get('/customers', [CustomerController::class, 'index'])->name('customers');
 
     // Upload
