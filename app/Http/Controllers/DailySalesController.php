@@ -20,25 +20,27 @@ class DailySalesController extends Controller
         if ($brand !== 'all') $storeQuery->where('brand', $brand);
         $storeIds = $storeQuery->pluck('id');
 
-        $dailySales = Order::whereIn('store_id', $storeIds)->where('status', 'complete')
+        $gmvStatuses = ['complete', 'shipped', 'processing', 'pending'];
+
+        $dailySales = Order::whereIn('store_id', $storeIds)->whereIn('status', $gmvStatuses)
             ->whereBetween('date', [$startDate, $endDate])
             ->select(DB::raw('date(date) as day'), DB::raw('sum(gmv) as total'), DB::raw('count(*) as orders'))
             ->groupBy('day')->orderBy('day')->get();
 
-        $today = Order::whereIn('store_id', $storeIds)->where('status', 'complete')
+        $today = Order::whereIn('store_id', $storeIds)->whereIn('status', $gmvStatuses)
             ->whereDate('date', today())->sum('gmv');
-        $yesterday = Order::whereIn('store_id', $storeIds)->where('status', 'complete')
+        $yesterday = Order::whereIn('store_id', $storeIds)->whereIn('status', $gmvStatuses)
             ->whereDate('date', today()->subDay())->sum('gmv');
-        $thisWeek = Order::whereIn('store_id', $storeIds)->where('status', 'complete')
+        $thisWeek = Order::whereIn('store_id', $storeIds)->whereIn('status', $gmvStatuses)
             ->whereBetween('date', [now()->startOfWeek(), now()->endOfWeek()])->sum('gmv');
-        $lastWeek = Order::whereIn('store_id', $storeIds)->where('status', 'complete')
+        $lastWeek = Order::whereIn('store_id', $storeIds)->whereIn('status', $gmvStatuses)
             ->whereBetween('date', [now()->subWeek()->startOfWeek(), now()->subWeek()->endOfWeek()])->sum('gmv');
 
-        $storeBreakdown = Store::whereIn('id', $storeIds)->get()->map(function ($store) use ($startDate, $endDate) {
+        $storeBreakdown = Store::whereIn('id', $storeIds)->get()->map(function ($store) use ($startDate, $endDate, $gmvStatuses) {
             return [
                 'store' => $store,
-                'gmv' => Order::where('store_id', $store->id)->where('status', 'complete')->whereBetween('date', [$startDate, $endDate])->sum('gmv'),
-                'orders' => Order::where('store_id', $store->id)->where('status', 'complete')->whereBetween('date', [$startDate, $endDate])->count(),
+                'gmv' => Order::where('store_id', $store->id)->whereIn('status', $gmvStatuses)->whereBetween('date', [$startDate, $endDate])->sum('gmv'),
+                'orders' => Order::where('store_id', $store->id)->whereIn('status', $gmvStatuses)->whereBetween('date', [$startDate, $endDate])->count(),
             ];
         })->sortByDesc('gmv')->values();
 

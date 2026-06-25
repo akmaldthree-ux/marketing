@@ -328,11 +328,14 @@ class UploadController extends Controller
 
     private function mapStatus(string $raw): string
     {
-        $raw = strtolower($raw);
-        if (str_contains($raw, 'selesai') || str_contains($raw, 'complete') || str_contains($raw, 'delivered')) return 'complete';
+        $raw = strtolower(trim($raw));
+        if (str_contains($raw, 'selesai') || str_contains($raw, 'complete') || str_contains($raw, 'delivered') || str_contains($raw, 'completed')) return 'complete';
         if (str_contains($raw, 'batal') || str_contains($raw, 'cancel')) return 'cancel';
         if (str_contains($raw, 'retur') || str_contains($raw, 'return')) return 'returned';
         if (str_contains($raw, 'refund')) return 'refunded';
-        return 'pending';
+        if (str_contains($raw, 'kirim') || str_contains($raw, 'shipped') || str_contains($raw, 'shipping') || str_contains($raw, 'pengiriman')) return 'shipped';
+        if (str_contains($raw, 'proses') || str_contains($raw, 'process') || str_contains($raw, 'packing') || str_contains($raw, 'dikemas')) return 'processing';
+        if (str_contains($raw, 'paid') || str_contains($raw, 'dibayar') || str_contains($raw, 'unpaid') || str_contains($raw, 'pending')) return 'pending';
+        return 'complete'; // default: anggap selesai jika tidak dikenal
     }
 }
