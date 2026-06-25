@@ -2,6 +2,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\{Store, Target, Cog, FunnelTarget, Financial};
+use App\Support\XlsxWriter;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
@@ -26,7 +27,7 @@ class ImportController extends Controller
         $rows[] = ['# - Nama Toko harus persis sama seperti di sistem'];
         $rows[] = ['# - Baris yang diawali # akan diabaikan'];
         $rows[] = ['# - Contoh: 50000000 untuk Rp 50 juta'];
-        return $this->csvDownload('template_target_gmv.csv', $rows);
+        return XlsxWriter::download('template_target_gmv.xlsx', $rows);
     }
 
     public function templateHpp()
@@ -41,7 +42,7 @@ class ImportController extends Controller
         $rows[] = ['# - SKU harus unik per produk'];
         $rows[] = ['# - Jika SKU sudah ada di sistem, HPP akan diupdate'];
         $rows[] = ['# - Berlaku Dari format: YYYY-MM-DD (contoh: 2026-01-01)'];
-        return $this->csvDownload('template_hpp.csv', $rows);
+        return XlsxWriter::download('template_hpp.xlsx', $rows);
     }
 
     public function templateBiayaOps()
@@ -57,7 +58,7 @@ class ImportController extends Controller
         $rows[] = ['# - Isi biaya operasional (Rp) per bulan per toko'];
         $rows[] = ['# - Bisa alokasikan semua biaya ke satu toko sebagai cost center brand'];
         $rows[] = ['# - Biaya ops: gaji, sewa gudang, utilitas, dll'];
-        return $this->csvDownload('template_biaya_ops.csv', $rows);
+        return XlsxWriter::download('template_biaya_ops.xlsx', $rows);
     }
 
     public function templateFunnelTarget()
@@ -73,7 +74,7 @@ class ImportController extends Controller
         $rows[] = ['# - ATC Rate: % yang menambah ke keranjang'];
         $rows[] = ['# - CVR: % yang jadi pembeli dari total pengunjung'];
         $rows[] = ['# - Masukkan angka desimal, contoh: 2.5 untuk 2.5%'];
-        return $this->csvDownload('template_funnel_target.csv', $rows);
+        return XlsxWriter::download('template_funnel_target.xlsx', $rows);
     }
 
     // ── Import Processors ─────────────────────────────────────────────────────

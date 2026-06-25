@@ -2,6 +2,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Product;
+use App\Support\XlsxWriter;
 use Illuminate\Http\Request;
 
 class ProductController extends Controller
@@ -88,7 +89,7 @@ class ProductController extends Controller
     {
         $rows = [
             ['SKU', 'Canonical Name', 'Brand', 'Category'],
-            ['DTH-001', 'Gamis Syar\'i Premium', 'DTHREE', 'Gamis'],
+            ['DTH-001', "Gamis Syar'i Premium", 'DTHREE', 'Gamis'],
             ['HRM-001', 'Sarimbit Couple Batik Premium', 'HURIM', 'Sarimbit'],
             ['ASF-001', 'Gamis Anak Asfara', 'ASFARA', 'Anak'],
         ];
@@ -99,13 +100,6 @@ class ProductController extends Controller
         $rows[] = ['# - Brand: DTHREE / HURIM / ASFARA'];
         $rows[] = ['# - Jika SKU sudah ada, nama akan diupdate'];
 
-        $csv = "\xEF\xBB\xBF";
-        foreach ($rows as $row) {
-            $csv .= implode(',', array_map(fn($v) => '"' . str_replace('"', '""', $v) . '"', $row)) . "\r\n";
-        }
-        return response($csv, 200, [
-            'Content-Type'        => 'text/csv; charset=UTF-8',
-            'Content-Disposition' => 'attachment; filename="template_products.csv"',
-        ]);
+        return XlsxWriter::download('template_products.xlsx', $rows);
     }
 }
