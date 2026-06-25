@@ -56,6 +56,8 @@ body{background:#f5f6fa;font-family:'Segoe UI',sans-serif;}
     <div class="nav-label mt-2">Upload</div>
     <a href="{{ route('upload.index') }}" class="nav-link {{ request()->routeIs('upload.*') ? 'active' : '' }}"><i class="bi bi-cloud-upload"></i> Upload Data</a>
     @if(auth()->user()->isAdmin())
+    <div class="nav-label mt-2">Perencanaan</div>
+    <a href="{{ route('forecast') }}" class="nav-link {{ request()->routeIs('forecast') ? 'active' : '' }}"><i class="bi bi-magic"></i> Forecasting Produk</a>
     <div class="nav-label mt-2">Master Data</div>
     <a href="{{ route('stores.index') }}" class="nav-link {{ request()->routeIs('stores.*') ? 'active' : '' }}"><i class="bi bi-shop"></i> Toko</a>
     <a href="{{ route('pics.index') }}" class="nav-link {{ request()->routeIs('pics.*') ? 'active' : '' }}"><i class="bi bi-person-badge"></i> PIC</a>

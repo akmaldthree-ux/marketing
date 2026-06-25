@@ -5,7 +5,8 @@ use App\Http\Controllers\{
     UserController, UploadController, TargetController, CogController,
     FunnelTargetController, DailySalesController, RoasController,
     PnlController, FunnelController, CustomerController, SettingsController,
-    StoreCompareController, ProductAnalysisController, ExportController, ImportController
+    StoreCompareController, ProductAnalysisController, ExportController,
+    ImportController, ForecastController
 };
 
 Route::middleware('guest')->group(function () {
@@ -56,6 +57,10 @@ Route::middleware('auth')->group(function () {
 
         Route::resource('cogs', CogController::class)->except(['show']);
         Route::resource('funnel-targets', FunnelTargetController::class)->except(['show']);
+
+        // Forecast (admin only)
+        Route::get('/forecast', [ForecastController::class, 'index'])->name('forecast');
+        Route::get('/forecast/export', [ForecastController::class, 'export'])->name('forecast.export');
 
         // Import routes
         Route::post('/import/target-gmv', [ImportController::class, 'importTargetGmv'])->name('import.target-gmv');
