@@ -14,6 +14,7 @@
 :root{
   --color-primary:        #e60023;
   --color-primary-pressed:#cc001f;
+  --color-primary-pale:   #fff0f1;
   --color-canvas:         #ffffff;
   --color-surface-soft:   #fbfbf9;
   --color-surface-card:   #f6f6f3;
@@ -37,13 +38,20 @@
   --rounded-full:         9999px;
   --sidebar-w:            248px;
   --topbar-h:             60px;
-  --spacing-sm:           8px;
-  --spacing-md:           12px;
-  --spacing-lg:           16px;
-  --spacing-xl:           24px;
-  --spacing-xxl:          32px;
-  --spacing-section:      64px;
+
+  /* Accent palette for stat cards */
+  --accent-red:    #e60023; --accent-red-pale:   #fff0f1;
+  --accent-blue:   #435ee5; --accent-blue-pale:  #eef1fd;
+  --accent-green:  #103c25; --accent-green-pale: #d1fae5;
+  --accent-amber:  #92400e; --accent-amber-pale: #fff7ed;
+  --accent-purple: #5b21b6; --accent-purple-pale:#ede9fe;
 }
+
+/* ── Custom Scrollbar ───────────────────────────────────────────────── */
+::-webkit-scrollbar{width:5px;height:5px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:var(--color-stone);border-radius:var(--rounded-full);}
+::-webkit-scrollbar-thumb:hover{background:var(--color-ash);}
 
 /* ── Base ──────────────────────────────────────────────────────────── */
 *,*::before,*::after{box-sizing:border-box;}
@@ -56,6 +64,33 @@ body{
   margin:0;
 }
 
+/* ── Page fade-in ───────────────────────────────────────────────────── */
+@keyframes fadeUp{
+  from{opacity:0;transform:translateY(10px);}
+  to  {opacity:1;transform:translateY(0);}
+}
+@keyframes fadeIn{
+  from{opacity:0;}to{opacity:1;}
+}
+@keyframes fillBar{
+  from{width:0!important;}
+}
+@keyframes pulse-ring{
+  0%  {box-shadow:0 0 0 0 rgba(230,0,35,.45);}
+  70% {box-shadow:0 0 0 6px rgba(230,0,35,0);}
+  100%{box-shadow:0 0 0 0 rgba(230,0,35,0);}
+}
+
+.page-content{animation:fadeIn .25s ease;}
+
+/* Staggered card/row entrance */
+.card          {animation:fadeUp .3s ease both;}
+.stat-card     {animation:fadeUp .3s ease both;}
+.stat-card:nth-child(2){animation-delay:.05s;}
+.stat-card:nth-child(3){animation-delay:.1s;}
+.stat-card:nth-child(4){animation-delay:.15s;}
+.stat-card:nth-child(5){animation-delay:.2s;}
+
 /* ── Sidebar ───────────────────────────────────────────────────────── */
 .sidebar{
   position:fixed;top:0;left:0;height:100vh;
@@ -64,6 +99,7 @@ body{
   border-right:1px solid var(--color-hairline);
   overflow-y:auto;z-index:1000;
   display:flex;flex-direction:column;
+  transition:transform .22s ease;
 }
 .sidebar .brand{
   padding:1.25rem 1.5rem;
@@ -79,18 +115,20 @@ body{
   color:var(--color-ash);display:block;margin-top:1px;
 }
 .sidebar .brand .brand-dot{
-  width:28px;height:28px;border-radius:var(--rounded-full);
+  width:30px;height:30px;border-radius:var(--rounded-full);
   background:var(--color-primary);
   display:flex;align-items:center;justify-content:center;
   flex-shrink:0;
+  transition:transform .2s ease;
 }
+.sidebar .brand:hover .brand-dot{transform:scale(1.1) rotate(-6deg);}
 .sidebar .brand .brand-dot i{color:#fff;font-size:13px;}
 
 .sidebar .nav-label{
   padding:.9rem 1.5rem .3rem;
-  font-size:.65rem;font-weight:600;
-  text-transform:uppercase;letter-spacing:1px;
-  color:var(--color-ash);
+  font-size:.63rem;font-weight:700;
+  text-transform:uppercase;letter-spacing:1.2px;
+  color:var(--color-stone);
 }
 .sidebar .nav-link{
   display:flex;align-items:center;gap:.55rem;
@@ -98,18 +136,18 @@ body{
   color:var(--color-mute);
   font-size:.82rem;font-weight:500;
   border-left:3px solid transparent;
-  transition:color .12s,background .12s,border-color .12s;
+  transition:color .15s,background .15s,border-color .15s,padding-left .15s;
   text-decoration:none;
-  border-radius:0;
 }
 .sidebar .nav-link:hover{
   color:var(--color-ink);
   background:var(--color-surface-card);
   border-left-color:var(--color-stone);
+  padding-left:1.65rem;
 }
 .sidebar .nav-link.active{
   color:var(--color-primary);
-  background:var(--color-surface-card);
+  background:var(--color-primary-pale);
   border-left-color:var(--color-primary);
   font-weight:600;
 }
@@ -142,12 +180,37 @@ body{
   min-height:calc(100vh - var(--topbar-h));
 }
 
+/* ── Page Section Header ────────────────────────────────────────────── */
+.page-section-header{
+  display:flex;align-items:flex-end;justify-content:space-between;
+  flex-wrap:wrap;gap:.75rem;
+  margin-bottom:1.25rem;
+}
+.page-section-header .psh-title{
+  font-size:1.1rem;font-weight:700;
+  color:var(--color-ink);letter-spacing:-.4px;
+  line-height:1.15;
+}
+.page-section-header .psh-sub{
+  font-size:.76rem;color:var(--color-ash);
+  margin-top:.15rem;font-weight:400;
+}
+.page-section-header .psh-actions{
+  display:flex;gap:.5rem;flex-wrap:wrap;align-items:center;
+}
+
 /* ── Cards ─────────────────────────────────────────────────────────── */
 .card{
   border:1px solid var(--color-hairline);
   border-radius:var(--rounded-md);
   box-shadow:none;
   background:var(--color-canvas);
+  transition:box-shadow .2s ease,transform .2s ease,border-color .2s ease;
+}
+.card:hover{
+  box-shadow:0 4px 24px rgba(0,0,0,.07);
+  transform:translateY(-1px);
+  border-color:var(--color-stone);
 }
 .card-header{
   background:var(--color-canvas);
@@ -164,20 +227,64 @@ body{
   background:var(--color-canvas);
   border:1px solid var(--color-hairline);
   border-radius:var(--rounded-md);
-  padding:1.25rem 1.5rem;
+  padding:1.1rem 1.25rem 1.1rem 1.35rem;
+  position:relative;overflow:hidden;
+  transition:box-shadow .2s ease,transform .2s ease,border-color .2s ease;
+  border-left-width:3px;
 }
+.stat-card:hover{
+  box-shadow:0 6px 28px rgba(0,0,0,.08);
+  transform:translateY(-2px);
+  border-color:var(--color-stone);
+}
+/* Accent left-border color variants — add class to stat-card */
+.stat-card.accent-red   {border-left-color:var(--accent-red);}
+.stat-card.accent-blue  {border-left-color:var(--accent-blue);}
+.stat-card.accent-green {border-left-color:var(--accent-green);}
+.stat-card.accent-amber {border-left-color:var(--accent-amber);}
+.stat-card.accent-purple{border-left-color:var(--accent-purple);}
+
+.stat-card .sc-icon{
+  width:36px;height:36px;border-radius:10px;
+  display:flex;align-items:center;justify-content:center;
+  margin-bottom:.6rem;font-size:1rem;
+  transition:transform .2s ease;
+}
+.stat-card:hover .sc-icon{transform:scale(1.1);}
+.stat-card.accent-red    .sc-icon{background:var(--accent-red-pale);color:var(--accent-red);}
+.stat-card.accent-blue   .sc-icon{background:var(--accent-blue-pale);color:var(--accent-blue);}
+.stat-card.accent-green  .sc-icon{background:var(--accent-green-pale);color:var(--accent-green);}
+.stat-card.accent-amber  .sc-icon{background:var(--accent-amber-pale);color:var(--accent-amber);}
+.stat-card.accent-purple .sc-icon{background:var(--accent-purple-pale);color:var(--accent-purple);}
+
+/* Watermark icon */
+.stat-card::after{
+  content:attr(data-icon);
+  font-family:'bootstrap-icons';
+  position:absolute;right:-4px;bottom:-6px;
+  font-size:3.5rem;opacity:.04;pointer-events:none;
+  color:var(--color-ink);transition:opacity .2s,transform .2s;
+}
+.stat-card:hover::after{opacity:.07;transform:scale(1.05);}
+
 .stat-card .label{
-  font-size:.68rem;color:var(--color-ash);
-  text-transform:uppercase;letter-spacing:.6px;font-weight:600;
+  font-size:.67rem;color:var(--color-ash);
+  text-transform:uppercase;letter-spacing:.7px;font-weight:600;
 }
 .stat-card .value{
-  font-size:1.55rem;font-weight:700;
-  color:var(--color-ink);margin:.2rem 0;
+  font-size:1.5rem;font-weight:700;
+  color:var(--color-ink);margin:.2rem 0 .1rem;
   letter-spacing:-.5px;
 }
-.stat-card .delta{font-size:.75rem;font-weight:500;}
+.stat-card .delta{font-size:.73rem;font-weight:500;display:flex;align-items:center;gap:.2rem;}
+.delta-up  {color:#103c25;}
+.delta-down{color:var(--color-error);}
+.delta-neutral{color:var(--color-ash);}
 
 /* ── Buttons ────────────────────────────────────────────────────────── */
+.btn{transition:background .12s,border-color .12s,transform .08s,box-shadow .12s;}
+.btn:active{transform:scale(.97);}
+
 .btn-primary,.btn-primary:focus{
   background:var(--color-primary);
   border-color:var(--color-primary);
@@ -186,8 +293,11 @@ body{
   border-radius:var(--rounded-md);
   padding:6px 16px;
 }
-.btn-primary:hover{background:var(--color-primary-pressed);border-color:var(--color-primary-pressed);}
-.btn-primary:active{background:var(--color-primary-pressed);}
+.btn-primary:hover{
+  background:var(--color-primary-pressed);
+  border-color:var(--color-primary-pressed);
+  box-shadow:0 4px 14px rgba(230,0,35,.3);
+}
 
 .btn-secondary,.btn-secondary:focus{
   background:var(--color-secondary-bg);
@@ -197,21 +307,31 @@ body{
   border-radius:var(--rounded-md);
   padding:6px 16px;
 }
-.btn-secondary:hover{background:var(--color-secondary-pressed);border-color:var(--color-secondary-pressed);color:var(--color-ink);}
+.btn-secondary:hover{
+  background:var(--color-secondary-pressed);
+  border-color:var(--color-secondary-pressed);
+  color:var(--color-ink);
+}
 
 .btn-outline-primary{
   border-color:var(--color-primary);color:var(--color-primary);
   font-weight:600;font-size:.8rem;
   border-radius:var(--rounded-md);padding:5px 14px;
 }
-.btn-outline-primary:hover{background:var(--color-primary);color:#fff;}
+.btn-outline-primary:hover{
+  background:var(--color-primary);color:#fff;
+  box-shadow:0 4px 14px rgba(230,0,35,.3);
+}
 
 .btn-outline-secondary{
   border-color:var(--color-hairline);color:var(--color-mute);
   font-weight:600;font-size:.8rem;
   border-radius:var(--rounded-md);padding:5px 14px;
 }
-.btn-outline-secondary:hover{background:var(--color-surface-card);color:var(--color-ink);border-color:var(--color-stone);}
+.btn-outline-secondary:hover{
+  background:var(--color-surface-card);
+  color:var(--color-ink);border-color:var(--color-stone);
+}
 
 .btn-outline-danger{
   border-color:var(--color-hairline);color:var(--color-error);
@@ -230,89 +350,109 @@ body{
 
 /* ── Inputs & Forms ─────────────────────────────────────────────────── */
 .form-control,.form-select{
-  border:1px solid var(--color-ash);
+  border:1px solid var(--color-hairline);
   border-radius:var(--rounded-md);
   font-size:.82rem;padding:9px 13px;
   color:var(--color-ink);
   background:var(--color-canvas);
   box-shadow:none;
+  transition:border-color .15s,box-shadow .15s;
 }
 .form-control:focus,.form-select:focus{
   border-color:var(--color-ink);
-  box-shadow:0 0 0 3px rgba(67,94,229,.18);
+  box-shadow:0 0 0 3px rgba(67,94,229,.15);
   outline:none;
+}
+.form-control:hover:not(:focus),.form-select:hover:not(:focus){
+  border-color:var(--color-ash);
 }
 .form-control::placeholder{color:var(--color-ash);}
 .form-control-sm,.form-select-sm{padding:6px 11px;font-size:.78rem;}
 .form-label{font-size:.8rem;font-weight:600;color:var(--color-charcoal);margin-bottom:.3rem;}
 .form-text{font-size:.73rem;color:var(--color-ash);}
-.input-group .form-control{border-radius:var(--rounded-md);}
 
 /* ── Tables ─────────────────────────────────────────────────────────── */
 .table{font-size:.8rem;color:var(--color-body);}
 .table th{
-  font-size:.7rem;font-weight:600;
-  text-transform:uppercase;letter-spacing:.5px;
+  font-size:.68rem;font-weight:700;
+  text-transform:uppercase;letter-spacing:.6px;
   color:var(--color-ash);border-bottom:1px solid var(--color-hairline);
+  white-space:nowrap;
 }
 .table-light{background:var(--color-surface-card);}
 .table-light th{background:var(--color-surface-card);}
 .table>:not(caption)>*>*{border-color:var(--color-hairline-soft);}
-.table-hover tbody tr:hover td{background:var(--color-surface-soft);}
+.table-hover tbody tr{transition:background .12s;}
+.table-hover tbody tr:hover td{background:var(--color-primary-pale);}
 
 /* ── Badges ─────────────────────────────────────────────────────────── */
-.badge{border-radius:var(--rounded-full);font-weight:600;font-size:.65rem;padding:3px 9px;letter-spacing:.2px;}
+.badge{
+  border-radius:var(--rounded-full);font-weight:600;
+  font-size:.65rem;padding:3px 9px;letter-spacing:.2px;
+}
 .badge-brand-DTHREE{background:#ede9fe;color:#5b21b6;}
 .badge-brand-HURIM{background:#fce7f3;color:#9d174d;}
 .badge-brand-ASFARA{background:#d1fae5;color:#065f46;}
+
+/* ── Progress bars ──────────────────────────────────────────────────── */
+.progress{border-radius:var(--rounded-full);background:var(--color-surface-card);}
+.progress-bar{
+  border-radius:var(--rounded-full);
+  animation:fillBar .8s cubic-bezier(.4,0,.2,1) both;
+  transition:width .4s ease;
+}
 
 /* ── Modals ─────────────────────────────────────────────────────────── */
 .modal-content{
   border:none;
   border-radius:var(--rounded-lg);
-  box-shadow:0 16px 64px rgba(0,0,0,.12);
+  box-shadow:0 24px 80px rgba(0,0,0,.15);
+  animation:fadeUp .2s ease;
 }
 .modal-header{
   border-bottom:1px solid var(--color-hairline);
-  padding:1.25rem 1.5rem;border-radius:var(--rounded-lg) var(--rounded-lg) 0 0;
+  padding:1.25rem 1.5rem;
+  border-radius:var(--rounded-lg) var(--rounded-lg) 0 0;
 }
 .modal-title{font-size:.9rem;font-weight:700;color:var(--color-ink);}
 .modal-body{padding:1.25rem 1.5rem;}
 .modal-footer{
   border-top:1px solid var(--color-hairline);
-  padding:.75rem 1.5rem;border-radius:0 0 var(--rounded-lg) var(--rounded-lg);
+  padding:.75rem 1.5rem;
+  border-radius:0 0 var(--rounded-lg) var(--rounded-lg);
 }
 .modal-backdrop.show{opacity:.45;}
-
-/* ── Progress ───────────────────────────────────────────────────────── */
-.progress{border-radius:var(--rounded-full);background:var(--color-surface-card);}
-.progress-bar{border-radius:var(--rounded-full);}
 
 /* ── Dropdowns ──────────────────────────────────────────────────────── */
 .dropdown-menu{
   border:1px solid var(--color-hairline);
   border-radius:var(--rounded-md);
-  box-shadow:0 8px 32px rgba(0,0,0,.09);
-  font-size:.82rem;
-  color:var(--color-body);
+  box-shadow:0 8px 32px rgba(0,0,0,.1);
+  font-size:.82rem;color:var(--color-body);
+  animation:fadeUp .15s ease;
 }
-.dropdown-item{color:var(--color-body);font-size:.82rem;padding:.45rem .9rem;border-radius:var(--rounded-md);}
+.dropdown-item{
+  color:var(--color-body);font-size:.82rem;
+  padding:.45rem .9rem;border-radius:var(--rounded-md);
+  transition:background .1s,color .1s;
+}
 .dropdown-item:hover{background:var(--color-surface-card);color:var(--color-ink);}
 .dropdown-divider{border-color:var(--color-hairline);}
 .dropdown-header{font-size:.7rem;color:var(--color-ash);text-transform:uppercase;letter-spacing:.5px;}
 
 /* ── Alerts ─────────────────────────────────────────────────────────── */
-.alert{border-radius:var(--rounded-md);font-size:.82rem;border:1px solid;}
+.alert{border-radius:var(--rounded-md);font-size:.82rem;border:1px solid;animation:fadeUp .2s ease;}
 .alert-success{background:#d1fae5;border-color:#a7f3d0;color:#065f46;}
 .alert-danger{background:#fee2e2;border-color:#fca5a5;color:var(--color-error);}
 .alert-warning{background:#fff7ed;border-color:#fed7aa;color:#92400e;}
 
-/* ── Nav Tabs / Pills ────────────────────────────────────────────────── */
+/* ── Nav Tabs ───────────────────────────────────────────────────────── */
 .nav-tabs{border-bottom:1px solid var(--color-hairline);}
 .nav-tabs .nav-link{
   color:var(--color-mute);font-size:.82rem;font-weight:500;
   border:none;border-bottom:2px solid transparent;
   padding:.5rem 1rem;border-radius:0;
+  transition:color .15s,border-color .15s;
 }
 .nav-tabs .nav-link:hover{color:var(--color-ink);border-bottom-color:var(--color-stone);}
 .nav-tabs .nav-link.active{color:var(--color-primary);border-bottom-color:var(--color-primary);font-weight:600;}
@@ -323,10 +463,20 @@ body{
   background:var(--color-surface-card);
   border:1px solid var(--color-hairline);
   display:flex;align-items:center;justify-content:center;
-  cursor:pointer;color:var(--color-ink);transition:background .12s;
+  cursor:pointer;color:var(--color-ink);
+  transition:background .12s,border-color .12s,transform .1s;
   flex-shrink:0;
 }
-.topbar-icon-btn:hover{background:var(--color-secondary-bg);}
+.topbar-icon-btn:hover{
+  background:var(--color-secondary-bg);
+  border-color:var(--color-stone);
+  transform:scale(1.07);
+}
+
+/* ── Pulse notification badge ───────────────────────────────────────── */
+.pulse-badge{
+  animation:pulse-ring 1.8s ease-in-out infinite;
+}
 
 /* ── User chip ──────────────────────────────────────────────────────── */
 .user-chip{
@@ -336,9 +486,13 @@ body{
   border-radius:var(--rounded-full);
   cursor:pointer;background:var(--color-canvas);
   font-size:.8rem;font-weight:600;color:var(--color-ink);
-  transition:background .12s;
+  transition:background .12s,border-color .12s,box-shadow .12s;
 }
-.user-chip:hover{background:var(--color-surface-card);}
+.user-chip:hover{
+  background:var(--color-surface-card);
+  border-color:var(--color-stone);
+  box-shadow:0 2px 8px rgba(0,0,0,.07);
+}
 .user-chip .avatar{
   width:28px;height:28px;border-radius:var(--rounded-full);
   background:var(--color-primary);color:#fff;
@@ -353,13 +507,33 @@ body{
   border:1px solid var(--color-hairline);
   border-radius:var(--rounded-full);
   padding:5px 14px;font-size:.76rem;font-weight:600;
-  cursor:pointer;transition:background .12s,color .12s;
+  cursor:pointer;
+  transition:background .12s,color .12s,border-color .12s,box-shadow .12s;
   text-decoration:none;
 }
-.filter-chip:hover,.filter-chip.active{
+.filter-chip:hover{
+  background:var(--color-secondary-bg);
+  border-color:var(--color-stone);
+  box-shadow:0 2px 8px rgba(0,0,0,.06);
+}
+.filter-chip.active{
   background:var(--color-ink);color:var(--color-on-dark);
   border-color:var(--color-ink);
 }
+
+/* ── Empty state ────────────────────────────────────────────────────── */
+.empty-state{
+  text-align:center;padding:3.5rem 2rem;
+  animation:fadeUp .3s ease;
+}
+.empty-state .empty-icon{
+  width:64px;height:64px;border-radius:var(--rounded-lg);
+  background:var(--color-surface-card);border:1px solid var(--color-hairline);
+  display:flex;align-items:center;justify-content:center;
+  margin:0 auto 1rem;font-size:1.6rem;color:var(--color-stone);
+}
+.empty-state .empty-title{font-size:.9rem;font-weight:600;color:var(--color-charcoal);margin-bottom:.3rem;}
+.empty-state .empty-sub{font-size:.78rem;color:var(--color-ash);}
 
 /* ── Sidebar overlay (mobile) ───────────────────────────────────────── */
 .sidebar-overlay{
@@ -368,9 +542,16 @@ body{
 }
 .sidebar-overlay.show{display:block;}
 
+/* ── Tooltip override ───────────────────────────────────────────────── */
+.tooltip-inner{
+  border-radius:var(--rounded-md);
+  font-size:.75rem;font-weight:500;
+  background:var(--color-charcoal);
+}
+
 /* ── Mobile responsive ──────────────────────────────────────────────── */
 @media(max-width:991px){
-  .sidebar{transform:translateX(-100%);transition:transform .22s ease;border-right:none;}
+  .sidebar{transform:translateX(-100%);border-right:none;}
   .sidebar.open{transform:translateX(0);box-shadow:8px 0 32px rgba(0,0,0,.12);}
   .page-content{margin-left:0;padding:1rem;}
   .topbar{left:0;}
@@ -379,7 +560,7 @@ body{
 @media(min-width:992px){.topbar-toggle{display:none!important;}}
 @media(max-width:576px){
   .page-content{padding:.75rem;}
-  .stat-card{padding:1rem 1.1rem;}
+  .stat-card{padding:.9rem 1rem;}
 }
 </style>
 @stack('styles')
@@ -397,27 +578,27 @@ body{
   </div>
   <nav class="py-2 flex-grow-1">
     <div class="nav-label">Analitik</div>
-    <a href="{{ route('dashboard') }}" class="nav-link {{ request()->routeIs('dashboard') ? 'active' : '' }}"><i class="bi bi-grid-1x2"></i> Overview</a>
-    <a href="{{ route('daily-sales') }}" class="nav-link {{ request()->routeIs('daily-sales') ? 'active' : '' }}"><i class="bi bi-bar-chart"></i> Daily Sales</a>
-    <a href="{{ route('roas') }}" class="nav-link {{ request()->routeIs('roas') ? 'active' : '' }}"><i class="bi bi-graph-up-arrow"></i> ROAS & Iklan</a>
-    <a href="{{ route('funnel') }}" class="nav-link {{ request()->routeIs('funnel') ? 'active' : '' }}"><i class="bi bi-funnel"></i> Funnel</a>
-    <a href="{{ route('pnl') }}" class="nav-link {{ request()->routeIs('pnl') ? 'active' : '' }}"><i class="bi bi-calculator"></i> P&amp;L</a>
-    <a href="{{ route('customers') }}" class="nav-link {{ request()->routeIs('customers') ? 'active' : '' }}"><i class="bi bi-people"></i> Customer</a>
-    <a href="{{ route('store-compare') }}" class="nav-link {{ request()->routeIs('store-compare') ? 'active' : '' }}"><i class="bi bi-columns-gap"></i> Perbandingan Toko</a>
+    <a href="{{ route('dashboard') }}"       class="nav-link {{ request()->routeIs('dashboard') ? 'active' : '' }}"><i class="bi bi-grid-1x2"></i> Overview</a>
+    <a href="{{ route('daily-sales') }}"     class="nav-link {{ request()->routeIs('daily-sales') ? 'active' : '' }}"><i class="bi bi-bar-chart"></i> Daily Sales</a>
+    <a href="{{ route('roas') }}"            class="nav-link {{ request()->routeIs('roas') ? 'active' : '' }}"><i class="bi bi-graph-up-arrow"></i> ROAS & Iklan</a>
+    <a href="{{ route('funnel') }}"          class="nav-link {{ request()->routeIs('funnel') ? 'active' : '' }}"><i class="bi bi-funnel"></i> Funnel</a>
+    <a href="{{ route('pnl') }}"             class="nav-link {{ request()->routeIs('pnl') ? 'active' : '' }}"><i class="bi bi-calculator"></i> P&amp;L</a>
+    <a href="{{ route('customers') }}"       class="nav-link {{ request()->routeIs('customers') ? 'active' : '' }}"><i class="bi bi-people"></i> Customer</a>
+    <a href="{{ route('store-compare') }}"   class="nav-link {{ request()->routeIs('store-compare') ? 'active' : '' }}"><i class="bi bi-columns-gap"></i> Perbandingan Toko</a>
     <a href="{{ route('product-analysis') }}" class="nav-link {{ request()->routeIs('product-analysis') ? 'active' : '' }}"><i class="bi bi-box-seam"></i> Analisis Produk</a>
     <div class="nav-label mt-2">Perencanaan</div>
-    <a href="{{ route('forecast') }}" class="nav-link {{ request()->routeIs('forecast') ? 'active' : '' }}"><i class="bi bi-magic"></i> Forecasting Produk</a>
+    <a href="{{ route('forecast') }}"        class="nav-link {{ request()->routeIs('forecast') ? 'active' : '' }}"><i class="bi bi-magic"></i> Forecasting Produk</a>
     <div class="nav-label mt-2">Upload</div>
-    <a href="{{ route('upload.index') }}" class="nav-link {{ request()->routeIs('upload.*') ? 'active' : '' }}"><i class="bi bi-cloud-upload"></i> Upload Data</a>
+    <a href="{{ route('upload.index') }}"    class="nav-link {{ request()->routeIs('upload.*') ? 'active' : '' }}"><i class="bi bi-cloud-upload"></i> Upload Data</a>
     @if(auth()->user()->isAdmin())
     <div class="nav-label mt-2">Master Data</div>
-    <a href="{{ route('stores.index') }}" class="nav-link {{ request()->routeIs('stores.*') ? 'active' : '' }}"><i class="bi bi-shop"></i> Toko</a>
-    <a href="{{ route('pics.index') }}" class="nav-link {{ request()->routeIs('pics.*') ? 'active' : '' }}"><i class="bi bi-person-badge"></i> PIC</a>
-    <a href="{{ route('users.index') }}" class="nav-link {{ request()->routeIs('users.*') ? 'active' : '' }}"><i class="bi bi-shield-person"></i> Users</a>
-    <a href="{{ route('targets.index') }}" class="nav-link {{ request()->routeIs('targets.*') ? 'active' : '' }}"><i class="bi bi-bullseye"></i> Target GMV</a>
-    <a href="{{ route('cogs.index') }}" class="nav-link {{ request()->routeIs('cogs.*') ? 'active' : '' }}"><i class="bi bi-tag"></i> HPP / COG</a>
+    <a href="{{ route('stores.index') }}"        class="nav-link {{ request()->routeIs('stores.*') ? 'active' : '' }}"><i class="bi bi-shop"></i> Toko</a>
+    <a href="{{ route('pics.index') }}"          class="nav-link {{ request()->routeIs('pics.*') ? 'active' : '' }}"><i class="bi bi-person-badge"></i> PIC</a>
+    <a href="{{ route('users.index') }}"         class="nav-link {{ request()->routeIs('users.*') ? 'active' : '' }}"><i class="bi bi-shield-person"></i> Users</a>
+    <a href="{{ route('targets.index') }}"       class="nav-link {{ request()->routeIs('targets.*') ? 'active' : '' }}"><i class="bi bi-bullseye"></i> Target GMV</a>
+    <a href="{{ route('cogs.index') }}"          class="nav-link {{ request()->routeIs('cogs.*') ? 'active' : '' }}"><i class="bi bi-tag"></i> HPP / COG</a>
     <a href="{{ route('funnel-targets.index') }}" class="nav-link {{ request()->routeIs('funnel-targets.*') ? 'active' : '' }}"><i class="bi bi-sliders"></i> Target Funnel</a>
-    <a href="{{ route('products.index') }}" class="nav-link {{ request()->routeIs('products.*') ? 'active' : '' }}"><i class="bi bi-collection"></i> Master Produk</a>
+    <a href="{{ route('products.index') }}"      class="nav-link {{ request()->routeIs('products.*') ? 'active' : '' }}"><i class="bi bi-collection"></i> Master Produk</a>
     @endif
   </nav>
   <div class="sidebar-footer">
@@ -438,24 +619,29 @@ body{
   @php $alerts = \App\Http\Controllers\NotificationController::getTargetAlerts(); @endphp
   @if(count($alerts) > 0)
   <div class="dropdown">
-    <button class="topbar-icon-btn position-relative" data-bs-toggle="dropdown" aria-label="Notifikasi">
+    <button class="topbar-icon-btn pulse-badge position-relative" data-bs-toggle="dropdown" aria-label="Notifikasi">
       <i class="bi bi-bell" style="font-size:.95rem"></i>
-      <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill" style="background:var(--color-primary);font-size:.55rem;padding:2px 5px">
+      <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill"
+        style="background:var(--color-primary);font-size:.55rem;padding:2px 5px;min-width:16px">
         {{ count($alerts) }}
       </span>
     </button>
     <ul class="dropdown-menu dropdown-menu-end" style="min-width:300px;max-height:420px;overflow-y:auto">
-      <li><div class="px-3 py-2 border-bottom" style="border-color:var(--color-hairline)!important">
-        <span style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--color-ash)">Target Berisiko</span>
-        <span class="ms-1" style="font-size:.72rem;color:var(--color-mute)">{{ now()->format('M Y') }}</span>
-      </div></li>
+      <li>
+        <div class="px-3 py-2" style="border-bottom:1px solid var(--color-hairline)">
+          <span style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--color-ash)">Target Berisiko</span>
+          <span class="ms-1" style="font-size:.72rem;color:var(--color-mute)">{{ now()->format('M Y') }}</span>
+        </div>
+      </li>
       @foreach($alerts as $a)
       <li>
         <div class="px-3 py-2" style="border-bottom:1px solid var(--color-hairline-soft)">
           <div style="font-size:.8rem;font-weight:600;color:var(--color-ink)">{{ $a['store'] }}</div>
           <div class="d-flex justify-content-between align-items-center mt-1">
             <span class="badge badge-brand-{{ $a['brand'] }}">{{ $a['brand'] }}</span>
-            <small style="color:var(--color-error);font-weight:600;font-size:.75rem">{{ $a['actual_pct'] }}% <span style="color:var(--color-ash);font-weight:400">/ exp. {{ $a['expected_pct'] }}%</span></small>
+            <small style="color:var(--color-error);font-weight:600;font-size:.75rem">
+              {{ $a['actual_pct'] }}% <span style="color:var(--color-ash);font-weight:400">/ exp. {{ $a['expected_pct'] }}%</span>
+            </small>
           </div>
           <div class="progress mt-1" style="height:3px">
             <div class="progress-bar" style="width:{{ $a['actual_pct'] }}%;background:var(--color-primary)"></div>
@@ -475,17 +661,21 @@ body{
       <i class="bi bi-chevron-down d-none d-md-inline" style="font-size:.65rem;color:var(--color-ash)"></i>
     </div>
     <ul class="dropdown-menu dropdown-menu-end mt-1">
-      <li><div class="px-3 py-2" style="border-bottom:1px solid var(--color-hairline-soft)">
-        <div style="font-size:.8rem;font-weight:600;color:var(--color-ink)">{{ auth()->user()->name }}</div>
-        <div style="font-size:.72rem;color:var(--color-ash)">{{ auth()->user()->email }}</div>
-        <span class="badge mt-1" style="background:var(--color-surface-card);color:var(--color-mute);border:1px solid var(--color-hairline)">{{ auth()->user()->role }}</span>
-      </div></li>
+      <li>
+        <div class="px-3 py-2" style="border-bottom:1px solid var(--color-hairline-soft)">
+          <div style="font-size:.8rem;font-weight:600;color:var(--color-ink)">{{ auth()->user()->name }}</div>
+          <div style="font-size:.72rem;color:var(--color-ash)">{{ auth()->user()->email }}</div>
+          <span class="badge mt-1" style="background:var(--color-surface-card);color:var(--color-mute);border:1px solid var(--color-hairline)">{{ auth()->user()->role }}</span>
+        </div>
+      </li>
       <li><a class="dropdown-item" href="{{ route('settings') }}"><i class="bi bi-gear me-2"></i>Pengaturan</a></li>
-      <li><hr class="dropdown-divider" style="border-color:var(--color-hairline)"></li>
+      <li><hr class="dropdown-divider"></li>
       <li>
         <form method="POST" action="{{ route('logout') }}">
           @csrf
-          <button class="dropdown-item" style="color:var(--color-error)"><i class="bi bi-box-arrow-right me-2"></i>Logout</button>
+          <button class="dropdown-item" style="color:var(--color-error)">
+            <i class="bi bi-box-arrow-right me-2"></i>Logout
+          </button>
         </form>
       </li>
     </ul>
@@ -514,21 +704,85 @@ body{
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
 <script>
-document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el=>new bootstrap.Tooltip(el));
-const sidebar  = document.getElementById('sidebar');
-const overlay  = document.getElementById('sidebarOverlay');
-const toggler  = document.getElementById('sidebarToggle');
+/* ── Tooltips ── */
+document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => new bootstrap.Tooltip(el));
+
+/* ── Mobile sidebar ── */
+const sidebar = document.getElementById('sidebar');
+const overlay = document.getElementById('sidebarOverlay');
+const toggler = document.getElementById('sidebarToggle');
 if(toggler){
-  toggler.addEventListener('click',()=>{sidebar.classList.toggle('open');overlay.classList.toggle('show');});
-  overlay.addEventListener('click',()=>{sidebar.classList.remove('open');overlay.classList.remove('show');});
+  toggler.addEventListener('click',()=>{
+    sidebar.classList.toggle('open');
+    overlay.classList.toggle('show');
+  });
+  overlay.addEventListener('click',()=>{
+    sidebar.classList.remove('open');
+    overlay.classList.remove('show');
+  });
 }
-// Chart.js global defaults — warm ink palette
+
+/* ── Progress bar animate-on-scroll ── */
+(function(){
+  const bars = document.querySelectorAll('.progress-bar');
+  if(!bars.length) return;
+  const io = new IntersectionObserver(entries=>{
+    entries.forEach(e=>{
+      if(e.isIntersecting){
+        e.target.style.animation='fillBar .8s cubic-bezier(.4,0,.2,1) both';
+        io.unobserve(e.target);
+      }
+    });
+  },{threshold:.1});
+  bars.forEach(b=>io.observe(b));
+})();
+
+/* ── Staggered card entrance ── */
+(function(){
+  const cards = document.querySelectorAll('.card,.stat-card');
+  const io = new IntersectionObserver(entries=>{
+    entries.forEach((e,i)=>{
+      if(e.isIntersecting){
+        e.target.style.animationDelay = (i * 0.04) + 's';
+        e.target.classList.add('anim-in');
+        io.unobserve(e.target);
+      }
+    });
+  },{threshold:.05});
+  cards.forEach(c=>{
+    c.style.opacity='0';
+    io.observe(c);
+  });
+  document.querySelectorAll('.anim-in').forEach(c=>c.style.opacity='');
+})();
+
+/* ── Chart.js global defaults — warm ink palette ── */
 if(typeof Chart !== 'undefined'){
-  Chart.defaults.font.family = "'Inter',system-ui,sans-serif";
-  Chart.defaults.font.size   = 11;
-  Chart.defaults.color       = '#62625b';
-  Chart.defaults.plugins.legend.labels.boxWidth = 10;
-  Chart.defaults.plugins.legend.labels.padding  = 14;
+  Chart.defaults.font.family     = "'Inter',system-ui,sans-serif";
+  Chart.defaults.font.size       = 11;
+  Chart.defaults.color           = '#62625b';
+  Chart.defaults.plugins.legend.labels.boxWidth  = 10;
+  Chart.defaults.plugins.legend.labels.padding   = 14;
+  Chart.defaults.plugins.legend.labels.usePointStyle = true;
+  Chart.defaults.plugins.tooltip.backgroundColor = '#262622';
+  Chart.defaults.plugins.tooltip.titleColor      = '#ffffff';
+  Chart.defaults.plugins.tooltip.bodyColor       = 'rgba(255,255,255,.75)';
+  Chart.defaults.plugins.tooltip.padding         = 10;
+  Chart.defaults.plugins.tooltip.cornerRadius    = 10;
+  Chart.defaults.plugins.tooltip.titleFont       = {weight:'700',size:12};
+  Chart.defaults.scale.grid.color                = '#e5e5e0';
+  Chart.defaults.scale.grid.borderColor          = '#dadad3';
+  Chart.defaults.scale.ticks.color               = '#91918c';
+
+  /* DSM brand palette for dataset colors */
+  window.DSM_COLORS = [
+    '#e60023','#435ee5','#103c25','#5b21b6','#92400e',
+    '#9d174d','#065f46','#1e3a5f','#713f12','#4c0519',
+  ];
+  window.DSM_COLORS_PALE = [
+    'rgba(230,0,35,.12)','rgba(67,94,229,.12)','rgba(16,60,37,.12)',
+    'rgba(91,33,182,.12)','rgba(146,64,14,.12)',
+  ];
 }
 </script>
 @stack('scripts')

@@ -15,35 +15,39 @@
 {{-- KPI Cards --}}
 <div class="row g-3 mb-4">
   <div class="col-sm-6 col-xl-3">
-    <div class="stat-card">
+    <div class="stat-card accent-red" data-icon="&#xf63b">
+      <div class="sc-icon"><i class="bi bi-currency-dollar"></i></div>
       <div class="label">Total GMV</div>
       <div class="value">Rp {{ number_format($totalGmv/1000000,1) }}jt</div>
       @if($gmvDelta !== null)
-      <div class="delta {{ $gmvDelta>=0?'text-success':'text-danger' }}">
-        <i class="bi bi-{{ $gmvDelta>=0?'arrow-up':'arrow-down' }}-short"></i>{{ abs($gmvDelta) }}% vs bulan lalu
+      <div class="delta {{ $gmvDelta>=0?'delta-up':'delta-down' }}">
+        <i class="bi bi-arrow-{{ $gmvDelta>=0?'up':'down' }}-short"></i>{{ abs($gmvDelta) }}% vs bulan lalu
       </div>
       @endif
     </div>
   </div>
   <div class="col-sm-6 col-xl-3">
-    <div class="stat-card">
+    <div class="stat-card accent-blue" data-icon="&#xf3e4">
+      <div class="sc-icon"><i class="bi bi-bag-check"></i></div>
       <div class="label">Total Orders</div>
       <div class="value">{{ number_format($totalOrders) }}</div>
-      <div class="delta text-muted">Cancelation rate: {{ $cancelRate }}%</div>
+      <div class="delta delta-neutral"><i class="bi bi-x-circle me-1"></i>Cancel {{ $cancelRate }}%</div>
     </div>
   </div>
   <div class="col-sm-6 col-xl-3">
-    <div class="stat-card">
+    <div class="stat-card accent-green" data-icon="&#xf568">
+      <div class="sc-icon"><i class="bi bi-graph-up-arrow"></i></div>
       <div class="label">Blended ROAS</div>
       <div class="value">{{ $blendedRoas }}x</div>
-      <div class="delta text-muted">GMV dari iklan</div>
+      <div class="delta delta-neutral">GMV dari iklan</div>
     </div>
   </div>
   <div class="col-sm-6 col-xl-3">
-    <div class="stat-card">
+    <div class="stat-card accent-purple" data-icon="&#xf4a1">
+      <div class="sc-icon"><i class="bi bi-people"></i></div>
       <div class="label">Avg CVR</div>
       <div class="value">{{ $avgCvr }}%</div>
-      <div class="delta text-muted">Visitor ke pembeli</div>
+      <div class="delta delta-neutral">Visitor ke pembeli</div>
     </div>
   </div>
 </div>
