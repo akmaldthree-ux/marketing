@@ -35,7 +35,7 @@ Route::middleware('auth')->group(function () {
     Route::put('/settings/password', [SettingsController::class, 'updatePassword'])->name('settings.password');
 
     // Admin only
-    Route::middleware('can:admin')->group(function () {
+    Route::middleware('admin')->group(function () {
         Route::resource('stores', StoreController::class)->except(['show']);
         Route::resource('pics', PicController::class)->except(['show']);
         Route::resource('users', UserController::class)->except(['show']);

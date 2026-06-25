@@ -61,10 +61,10 @@
     <div class="card h-100">
       <div class="card-header">Progress Target Brand</div>
       <div class="card-body">
-        @foreach($brandProgress as $brand=>$bp)
+        @foreach($brandProgress as $brandName=>$bp)
         <div class="mb-3">
           <div class="d-flex justify-content-between mb-1">
-            <span class="badge badge-brand-{{ $brand }}">{{ $brand }}</span>
+            <span class="badge badge-brand-{{ $brandName }}">{{ $brandName }}</span>
             <small class="text-muted">{{ $bp['pct'] }}%</small>
           </div>
           <div class="progress" style="height:8px">
