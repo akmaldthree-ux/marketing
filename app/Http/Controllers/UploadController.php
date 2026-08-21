@@ -5,11 +5,28 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\{Auth, DB};
 use Carbon\Carbon;
 class UploadController extends Controller {
-    public function index() {
+    public function index(\Illuminate\Http\Request $request) {
         $user  = Auth::user();
         $stores= Store::query()->where('is_active',true)->when($user->isPic()&&$user->pic_id, fn($q)=>$q->where('pic_id',$user->pic_id))->orderBy('brand')->orderBy('name')->get();
-        $logs  = UploadLog::with(['store','user'])->orderByDesc('created_at')->limit(30)->get();
-        return view('upload.index', compact('stores','logs'));
+
+        $filterStore = $request->get('filter_store','all');
+        $filterType  = $request->get('filter_type','all');
+
+        $logs = UploadLog::with(['store','user'])
+            ->when($filterStore!=='all', fn($q)=>$q->where('store_id',$filterStore))
+            ->when($filterType!=='all',  fn($q)=>$q->where('report_type',$filterType))
+            ->orderByDesc('created_at')
+            ->paginate(20)
+            ->withQueryString();
+
+        $stats = [
+            'total_files'  => UploadLog::count(),
+            'total_rows'   => UploadLog::where('status','success')->sum('rows_imported'),
+            'failed'       => UploadLog::where('status','failed')->count(),
+            'last_upload'  => UploadLog::max('created_at'),
+        ];
+
+        return view('upload.index', compact('stores','logs','stats','filterStore','filterType'));
     }
     public function store(Request $request) {
         $request->validate([
@@ -29,7 +46,7 @@ class UploadController extends Controller {
         try {
             $ext  = strtolower($file->getClientOriginalExtension());
             $rows = $ext === 'csv' ? $this->parseCsv($file->getRealPath()) : $this->parseXlsx($file->getRealPath());
-            $count= DB::transaction(fn() => $this->processRows($rows, $request->report_type, $request->store_id));
+            $count= DB::transaction(fn() => $this->processRows($rows, $request->report_type, $request->store_id, $log->id));
             $log->update(['rows_imported'=>$count,'status'=>'success']);
             return back()->with('success', "Berhasil mengimpor {$count} baris dari \"{$file->getClientOriginalName()}\".");
         } catch (\Throwable $e) {
@@ -38,8 +55,14 @@ class UploadController extends Controller {
         }
     }
     public function destroy(UploadLog $log) {
+        // Hapus data yang terkait dengan upload ini
+        $deleted = 0;
+        $deleted += DB::table('orders')->where('upload_log_id', $log->id)->delete();
+        $deleted += DB::table('ads_performance')->where('upload_log_id', $log->id)->delete();
+        $deleted += DB::table('store_metrics')->where('upload_log_id', $log->id)->delete();
+        $deleted += DB::table('financials')->where('upload_log_id', $log->id)->delete();
         $log->delete();
-        return back()->with('success', 'Log dihapus.');
+        return back()->with('success', "File \"{$log->filename}\" dan {$deleted} baris data berhasil dihapus.");
     }
 
     public function clearReports() {
@@ -127,18 +150,18 @@ class UploadController extends Controller {
         return $rows;
     }
 
-    private function processRows(array $rows, string $type, int $storeId): int {
+    private function processRows(array $rows, string $type, int $storeId, int $logId = 0): int {
         $store = Store::findOrFail($storeId);
         return match($type) {
-            'orders'     => $this->processOrders($rows, $store),
-            'financials' => $this->processFinancials($rows, $store),
-            'ads'        => $this->processAds($rows, $store),
-            'metrics'    => $this->processMetrics($rows, $store),
+            'orders'     => $this->processOrders($rows, $store, $logId),
+            'financials' => $this->processFinancials($rows, $store, $logId),
+            'ads'        => $this->processAds($rows, $store, $logId),
+            'metrics'    => $this->processMetrics($rows, $store, $logId),
             default      => 0,
         };
     }
 
-    private function processOrders(array $rows, Store $store): int {
+    private function processOrders(array $rows, Store $store, int $logId = 0): int {
         $count=0;
         foreach ($rows as $row) {
             $row=array_change_key_case($row,CASE_LOWER);
@@ -176,13 +199,13 @@ class UploadController extends Controller {
             );
             $customer->increment('total_orders');
             $customer->update(['last_order_date'=>$date]);
-            Order::create(['order_number'=>$orderNum,'store_id'=>$store->id,'customer_id'=>$customer->id,'order_date'=>$date,'gmv'=>$gmv,'status'=>$status,'product_sku'=>$sku,'product_name'=>$name,'qty'=>$qty,'is_new_customer'=>$isNew,'source_platform'=>$store->platform]);
+            Order::create(['order_number'=>$orderNum,'store_id'=>$store->id,'customer_id'=>$customer->id,'order_date'=>$date,'gmv'=>$gmv,'status'=>$status,'product_sku'=>$sku,'product_name'=>$name,'qty'=>$qty,'is_new_customer'=>$isNew,'source_platform'=>$store->platform,'upload_log_id'=>$logId]);
             $count++;
         }
         return $count;
     }
 
-    private function processFinancials(array $rows, Store $store): int {
+    private function processFinancials(array $rows, Store $store, int $logId = 0): int {
         $count=0;
         foreach ($rows as $row) {
             $row=array_change_key_case($row,CASE_LOWER);
@@ -196,7 +219,7 @@ class UploadController extends Controller {
             $cogs =$this->num($this->col($row,['hpp','cogs','harga pokok']));
             $ops  =$this->num($this->col($row,['biaya operasional','operational']));
             $netGmv=$net?:($gross-$admin);
-            Financial::updateOrCreate(['store_id'=>$store->id,'period'=>$period],[
+            Financial::updateOrCreate(['store_id'=>$store->id,'period'=>$period],['upload_log_id'=>$logId,
                 'gross_gmv'=>$gross,'net_gmv'=>$netGmv,'admin_fee'=>$admin,
                 'promo_fee'=>$this->num($this->col($row,['promo','promo xtra','voucher'])),
                 'shipping_fee'=>$this->num($this->col($row,['ongkir','shipping fee','biaya kirim'])),
@@ -209,7 +232,7 @@ class UploadController extends Controller {
         return $count;
     }
 
-    private function processAds(array $rows, Store $store): int {
+    private function processAds(array $rows, Store $store, int $logId = 0): int {
         $count=0;
         foreach ($rows as $row) {
             $row=array_change_key_case($row,CASE_LOWER);
@@ -218,7 +241,7 @@ class UploadController extends Controller {
             try { $date=Carbon::parse($dateRaw)->toDateString(); } catch(\Exception $e){ continue; }
             $spend=$this->num($this->col($row,['pengeluaran iklan','spend','biaya','cost','amount spent']));
             $gmv  =$this->num($this->col($row,['gmv dari iklan','gmv','revenue','purchase value','conversion value']));
-            AdsPerformance::updateOrCreate(['store_id'=>$store->id,'date'=>$date,'platform'=>$store->platform],[
+            AdsPerformance::updateOrCreate(['store_id'=>$store->id,'date'=>$date,'platform'=>$store->platform],['upload_log_id'=>$logId,
                 'spend'=>$spend,'impressions'=>(int)$this->num($this->col($row,['tayangan','impressions','impresi'])),
                 'clicks'=>(int)$this->num($this->col($row,['klik','clicks','click'])),
                 'gmv_from_ads'=>$gmv,'roas'=>$spend>0?round($gmv/$spend,2):0,
@@ -231,7 +254,7 @@ class UploadController extends Controller {
         return $count;
     }
 
-    private function processMetrics(array $rows, Store $store): int {
+    private function processMetrics(array $rows, Store $store, int $logId = 0): int {
         $count=0;
         foreach ($rows as $row) {
             $row=array_change_key_case($row,CASE_LOWER);
@@ -243,7 +266,7 @@ class UploadController extends Controller {
             $atc=$this->num($this->col($row,['tambah ke keranjang','add to cart','atc']));
             $checkout=$this->num($this->col($row,['checkout','bayar']));
             $buyers=$this->num($this->col($row,['pembeli','buyers','orders']));
-            StoreMetric::updateOrCreate(['store_id'=>$store->id,'date'=>$date],[
+            StoreMetric::updateOrCreate(['store_id'=>$store->id,'date'=>$date],['upload_log_id'=>$logId,
                 'views'=>(int)$views,'visitors'=>(int)$visitors,'add_to_cart'=>(int)$atc,
                 'checkout'=>(int)$checkout,'buyers'=>(int)$buyers,
                 'cvr'=>$visitors>0?round($buyers/$visitors*100,4):0,
