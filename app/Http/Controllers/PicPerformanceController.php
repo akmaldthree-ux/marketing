@@ -16,7 +16,7 @@ class PicPerformanceController extends Controller
         $gmvStatuses = Order::gmvStatuses();
         $excludedStatuses = Order::excludedStatuses();
 
-        $pics = Pic::where('is_active', true)->with('stores')->get()->map(function ($pic) use ($start, $end, $gmvStatuses) {
+        $pics = Pic::where('is_active', true)->with('stores')->get()->map(function ($pic) use ($start, $end, $excludedStatuses) {
             $storeIds = $pic->stores->pluck('id');
 
             $gmv    = Order::whereIn('store_id', $storeIds)->whereNotIn('status', $excludedStatuses)->whereBetween('order_date', [$start, $end])->sum('gmv');

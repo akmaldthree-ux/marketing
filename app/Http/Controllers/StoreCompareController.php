@@ -22,7 +22,7 @@ class StoreCompareController extends Controller
             ->when($brand !== 'all', fn($q) => $q->where('brand', $brand))
             ->orderBy('brand')->orderBy('name')->get();
 
-        $data = $stores->map(function ($store) use ($start, $end, $gmvStatuses, $mon, $year) {
+        $data = $stores->map(function ($store) use ($start, $end, $excludedStatuses, $mon, $year) {
             $gmv     = Order::where('store_id', $store->id)->whereNotIn('status', $excludedStatuses)->whereBetween('order_date', [$start, $end])->sum('gmv');
             $orders  = Order::where('store_id', $store->id)->whereBetween('order_date', [$start, $end])->count();
             $cancel  = Order::where('store_id', $store->id)->whereIn('status', ['cancelled','returned','refunded'])->whereBetween('order_date', [$start, $end])->count();

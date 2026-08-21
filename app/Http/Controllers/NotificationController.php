@@ -25,7 +25,7 @@ class NotificationController
             $alerts  = [];
             $stores  = Store::where('is_active', true)->get();
             $gmvStatuses = Order::gmvStatuses();
-        $excludedStatuses = Order::excludedStatuses();
+            $excludedStatuses = Order::excludedStatuses();
 
             foreach ($stores as $store) {
                 $target = Target::where('store_id', $store->id)
