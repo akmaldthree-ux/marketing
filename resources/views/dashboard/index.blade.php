@@ -19,7 +19,7 @@
       <div class="value">Rp {{ number_format($totalGmv/1000000,1) }}jt</div>
       @if($gmvDelta !== null)
       <div class="delta {{ $gmvDelta>=0?'delta-up':'delta-down' }}">
-        <i class="bi bi-arrow-{{ $gmvDelta>=0?'up':'down' }}-short"></i>{{ abs($gmvDelta) }}% vs bulan lalu
+        <i class="bi bi-arrow-{{ $gmvDelta>=0?'up':'down' }}-short"></i>{{ abs($gmvDelta) }}% vs {{ $prevLabel }}
       </div>
       @endif
     </div>

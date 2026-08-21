@@ -13,6 +13,27 @@ class DashboardController extends Controller {
         $prevEnd   = $start->copy()->subDay();
         $prevStart = $prevEnd->copy()->subDays($days - 1);
 
+        // Label perbandingan yang relevan
+        $today = now()->toDateString();
+        $yesterday = now()->subDay()->toDateString();
+        if ($dateFrom === $today && $dateTo === $today) {
+            $prevLabel = 'kemarin';
+        } elseif ($dateFrom === $yesterday && $dateTo === $yesterday) {
+            $prevLabel = '2 hari lalu';
+        } elseif ($days === 7) {
+            $prevLabel = '7 hari sebelumnya';
+        } elseif ($days === 30) {
+            $prevLabel = '30 hari sebelumnya';
+        } elseif ($start->day === 1 && $dateTo === $today) {
+            $prevLabel = 'bulan lalu';
+        } elseif ($start->day === 1 && $end->day === $end->daysInMonth) {
+            $prevLabel = 'bulan sebelumnya';
+        } elseif ($days === 1) {
+            $prevLabel = 'hari sebelumnya';
+        } else {
+            $prevLabel = $days.' hari sebelumnya';
+        }
+
         $storeIds       = $this->storeIds($brand);
         $excl           = Order::excludedStatuses(); // ['cancelled','returned','refunded']
 
@@ -67,7 +88,7 @@ class DashboardController extends Controller {
         }
 
         $year = $start->year; $mon = $start->month;
-        return view('dashboard.index', compact('totalGmv','prevGmv','gmvDelta','totalOrders','cancelRate','blendedRoas','avgCvr','gmvTrend','brandProgress','leaderboard','trendMonths','brand','year','mon','dateFrom','dateTo'));
+        return view('dashboard.index', compact('totalGmv','prevGmv','gmvDelta','prevLabel','totalOrders','cancelRate','blendedRoas','avgCvr','gmvTrend','brandProgress','leaderboard','trendMonths','brand','year','mon','dateFrom','dateTo'));
     }
 
     private function storeIds(string $brand) {
