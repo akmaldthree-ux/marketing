@@ -16,6 +16,7 @@
   <div class="d-flex gap-1 flex-wrap" id="drfPresets">
     @foreach([
       ['label'=>'Hari ini',   'key'=>'today'],
+      ['label'=>'Kemarin',    'key'=>'yesterday'],
       ['label'=>'7 hari',     'key'=>'last7'],
       ['label'=>'30 hari',    'key'=>'last30'],
       ['label'=>'Bulan ini',  'key'=>'this_month'],
@@ -59,6 +60,7 @@
   const today = new Date();
   const presets = {
     today:      [fmt(today), fmt(today)],
+    yesterday:  [fmt(new Date(today - 864e5)), fmt(new Date(today - 864e5))],
     last7:      [fmt(new Date(today - 6*864e5)), fmt(today)],
     last30:     [fmt(new Date(today - 29*864e5)), fmt(today)],
     this_month: [fmt(new Date(today.getFullYear(), today.getMonth(), 1)), fmt(today)],
