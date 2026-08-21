@@ -11,9 +11,10 @@ class CustomerController extends Controller {
 
         $storeIds    = Store::where('is_active', true)->pluck('id')->toArray();
         $gmvStatuses = Order::gmvStatuses();
+        $excludedStatuses = Order::excludedStatuses();
 
-        $newCustomers       = Order::whereIn('store_id', $storeIds)->where('is_new_customer', true)->whereIn('status', $gmvStatuses)->whereBetween('order_date', [$start, $end])->count();
-        $returningCustomers = Order::whereIn('store_id', $storeIds)->where('is_new_customer', false)->whereIn('status', $gmvStatuses)->whereBetween('order_date', [$start, $end])->count();
+        $newCustomers       = Order::whereIn('store_id', $storeIds)->where('is_new_customer', true)->whereNotIn('status', $excludedStatuses)->whereBetween('order_date', [$start, $end])->count();
+        $returningCustomers = Order::whereIn('store_id', $storeIds)->where('is_new_customer', false)->whereNotIn('status', $excludedStatuses)->whereBetween('order_date', [$start, $end])->count();
         $totalOrders = $newCustomers + $returningCustomers;
         $repeatRate  = $totalOrders > 0 ? round($returningCustomers / $totalOrders * 100, 1) : 0;
 
@@ -23,8 +24,8 @@ class CustomerController extends Controller {
             $d    = now()->subMonths($i);
             $s    = $d->copy()->startOfMonth();
             $e    = $d->copy()->endOfMonth();
-            $newC = Order::whereIn('store_id', $storeIds)->where('is_new_customer', true)->whereIn('status', $gmvStatuses)->whereBetween('order_date', [$s, $e])->count();
-            $retC = Order::whereIn('store_id', $storeIds)->where('is_new_customer', false)->whereIn('status', $gmvStatuses)->whereBetween('order_date', [$s, $e])->count();
+            $newC = Order::whereIn('store_id', $storeIds)->where('is_new_customer', true)->whereNotIn('status', $excludedStatuses)->whereBetween('order_date', [$s, $e])->count();
+            $retC = Order::whereIn('store_id', $storeIds)->where('is_new_customer', false)->whereNotIn('status', $excludedStatuses)->whereBetween('order_date', [$s, $e])->count();
             $tot  = $newC + $retC;
             $trendMonths[] = [
                 'label'         => $d->format('M Y'),

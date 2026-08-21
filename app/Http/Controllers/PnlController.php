@@ -24,7 +24,7 @@ class PnlController extends Controller
         if (!empty($storeIds)) {
             $gmvRows = DB::table('orders')
                 ->whereIn('store_id', $storeIds)
-                ->whereIn('status', Order::gmvStatuses())
+                ->whereNotIn('status', Order::excludedStatuses())
                 ->whereYear('order_date', $year)
                 ->selectRaw("DATE_FORMAT(order_date,'%m') as mon, SUM(gmv) as total")
                 ->groupByRaw("DATE_FORMAT(order_date,'%m')")

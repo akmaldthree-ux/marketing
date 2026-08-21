@@ -7,4 +7,6 @@ class Order extends Model {
     public function store() { return $this->belongsTo(Store::class); }
     public function customer() { return $this->belongsTo(Customer::class); }
     public static function gmvStatuses(): array { return ['complete','shipped','processing','pending']; }
+    // Status yang TIDAK dihitung sebagai GMV
+    public static function excludedStatuses(): array { return ['cancelled','returned','refunded']; }
 }

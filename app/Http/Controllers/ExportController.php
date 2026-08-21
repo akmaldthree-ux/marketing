@@ -104,7 +104,7 @@ class ExportController extends Controller
 
         $daily = DB::table('orders')
             ->when(!empty($storeIds), fn($q) => $q->whereIn('store_id', $storeIds))
-            ->whereIn('status', Order::gmvStatuses())
+            ->whereNotIn('status', Order::excludedStatuses())
             ->whereBetween('order_date', [$start, $end])
             ->selectRaw("DATE(order_date) as day, SUM(gmv) as gmv, COUNT(*) as orders")
             ->groupBy('day')->orderBy('day')->get();

@@ -25,6 +25,7 @@ class NotificationController
             $alerts  = [];
             $stores  = Store::where('is_active', true)->get();
             $gmvStatuses = Order::gmvStatuses();
+        $excludedStatuses = Order::excludedStatuses();
 
             foreach ($stores as $store) {
                 $target = Target::where('store_id', $store->id)
@@ -34,7 +35,7 @@ class NotificationController
                 if (!$target || $target <= 0) continue;
 
                 $actual = Order::where('store_id', $store->id)
-                    ->whereIn('status', $gmvStatuses)
+                    ->whereNotIn('status', $excludedStatuses)
                     ->whereBetween('order_date', [$start, $end])
                     ->sum('gmv');
 

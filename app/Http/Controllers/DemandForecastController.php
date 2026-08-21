@@ -19,7 +19,7 @@ class DemandForecastController extends Controller
         // Top SKUs by qty in last 30 days
         $since = now()->subDays(30)->toDateString();
         $skus  = Order::whereIn('store_id', $storeIds)
-            ->whereIn('status', Order::gmvStatuses())
+            ->whereNotIn('status', Order::excludedStatuses())
             ->where('order_date', '>=', $since)
             ->whereNotNull('product_sku')
             ->where('product_sku', '!=', '-')

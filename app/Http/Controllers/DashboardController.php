@@ -16,9 +16,10 @@ class DashboardController extends Controller {
 
         $storeIds    = $this->storeIds($brand);
         $gmvStatuses = Order::gmvStatuses();
+        $excludedStatuses = Order::excludedStatuses();
 
-        $totalGmv   = Order::whereIn('store_id',$storeIds)->whereIn('status',$gmvStatuses)->whereBetween('order_date',[$start,$end])->sum('gmv');
-        $prevGmv    = Order::whereIn('store_id',$storeIds)->whereIn('status',$gmvStatuses)->whereBetween('order_date',[$prevStart,$prevEnd])->sum('gmv');
+        $totalGmv   = Order::whereIn('store_id',$storeIds)->whereNotIn('status',$excludedStatuses)->whereBetween('order_date',[$start,$end])->sum('gmv');
+        $prevGmv    = Order::whereIn('store_id',$storeIds)->whereNotIn('status',$excludedStatuses)->whereBetween('order_date',[$prevStart,$prevEnd])->sum('gmv');
         $gmvDelta   = $prevGmv > 0 ? round((($totalGmv-$prevGmv)/$prevGmv)*100,1) : null;
 
         $totalOrders  = Order::whereIn('store_id',$storeIds)->whereBetween('order_date',[$start,$end])->count();
@@ -33,7 +34,7 @@ class DashboardController extends Controller {
         $totalBuyers   = StoreMetric::whereIn('store_id',$storeIds)->whereBetween('date',[$start,$end])->sum('buyers');
         $avgCvr        = $totalVisitors > 0 ? round($totalBuyers/$totalVisitors*100,2) : 0;
 
-        $gmvTrend = Order::whereIn('store_id',$storeIds)->whereIn('status',$gmvStatuses)
+        $gmvTrend = Order::whereIn('store_id',$storeIds)->whereNotIn('status',$excludedStatuses)
             ->whereBetween('order_date',[$start,$end])
             ->select(DB::raw('DATE(order_date) as day'), DB::raw('SUM(gmv) as total'))
             ->groupBy('day')->orderBy('day')->get();
@@ -41,7 +42,7 @@ class DashboardController extends Controller {
         $brandProgress = [];
         foreach (['DTHREE','HURIM','ASFARA'] as $b) {
             $bIds   = Store::where('brand',$b)->where('is_active',true)->pluck('id');
-            $actual = Order::whereIn('store_id',$bIds)->whereIn('status',$gmvStatuses)->whereBetween('order_date',[$start,$end])->sum('gmv');
+            $actual = Order::whereIn('store_id',$bIds)->whereNotIn('status',$excludedStatuses)->whereBetween('order_date',[$start,$end])->sum('gmv');
             // Target: sum across months spanned by range
             $target = 0;
             $cur = $start->copy()->startOfMonth();
@@ -53,7 +54,7 @@ class DashboardController extends Controller {
         }
 
         $leaderboard = Store::whereIn('id',$storeIds)->with('pic')->get()->map(function($s) use($start,$end,$gmvStatuses){
-            return ['store'=>$s,'gmv'=>Order::where('store_id',$s->id)->whereIn('status',$gmvStatuses)->whereBetween('order_date',[$start,$end])->sum('gmv')];
+            return ['store'=>$s,'gmv'=>Order::where('store_id',$s->id)->whereNotIn('status',$excludedStatuses)->whereBetween('order_date',[$start,$end])->sum('gmv')];
         })->sortByDesc('gmv')->values();
 
         $trendMonths = [];
@@ -63,8 +64,8 @@ class DashboardController extends Controller {
             $nonMpIds = Store::where('channel_type','non_marketplace')->pluck('id');
             $trendMonths[] = [
                 'label'  => $d->format('M Y'),
-                'mp'     => Order::whereIn('store_id',$mpIds)->whereIn('status',$gmvStatuses)->whereYear('order_date',$d->year)->whereMonth('order_date',$d->month)->sum('gmv'),
-                'non_mp' => Order::whereIn('store_id',$nonMpIds)->whereIn('status',$gmvStatuses)->whereYear('order_date',$d->year)->whereMonth('order_date',$d->month)->sum('gmv'),
+                'mp'     => Order::whereIn('store_id',$mpIds)->whereNotIn('status',$excludedStatuses)->whereYear('order_date',$d->year)->whereMonth('order_date',$d->month)->sum('gmv'),
+                'non_mp' => Order::whereIn('store_id',$nonMpIds)->whereNotIn('status',$excludedStatuses)->whereYear('order_date',$d->year)->whereMonth('order_date',$d->month)->sum('gmv'),
             ];
         }
 

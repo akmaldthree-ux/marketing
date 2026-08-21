@@ -32,6 +32,7 @@ class ProductAnalysisController extends Controller
             ->pluck('id')->toArray();
 
         $gmvStatuses = Order::gmvStatuses();
+        $excludedStatuses = Order::excludedStatuses();
 
         // Top SKU by GMV — pakai canonical_name dari products master jika ada
         $hasProducts = Schema::hasTable('products');
@@ -42,7 +43,7 @@ class ProductAnalysisController extends Controller
             ? "COALESCE(MAX(p.canonical_name), MAX(o.product_name))"
             : "MAX(o.product_name)";
         $skuQuery
-            ->whereIn('o.status', $gmvStatuses)
+            ->whereNotIn('o.status', $excludedStatuses)
             ->whereBetween('o.order_date', [$start, $end])
             ->whereNotNull('o.product_sku')
             ->where('o.product_sku', '!=', '-')
@@ -98,10 +99,10 @@ class ProductAnalysisController extends Controller
         $trendLabels = collect();
 
         if (!empty($top5)) {
-            $trendStart = Carbon::create((int)$year, (int)$mon, 1)->subMonths(2)->startOfMonth()->toDateString();
+            $trendStart = $startC->copy()->subMonths(2)->startOfMonth()->toDateString();
 
             $trendQuery = DB::table('orders')
-                ->whereIn('status', $gmvStatuses)
+                ->whereNotIn('status', $excludedStatuses)
                 ->whereIn('product_sku', $top5)
                 ->whereBetween('order_date', [$trendStart, $end])
                 ->selectRaw("product_sku, DATE_FORMAT(order_date,'%Y-%m') as period, SUM(gmv) as gmv")
