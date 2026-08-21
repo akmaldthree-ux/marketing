@@ -32,7 +32,7 @@
   </div>
   <div class="col-sm-4">
     <div class="stat-card">
-      <div class="label">Bulan Ini</div>
+      <div class="label">{{ \Carbon\Carbon::now()->translatedFormat('F Y') }}</div>
       <div class="value">Rp {{ number_format($summary['this_month']/1000000,1) }}jt</div>
     </div>
   </div>

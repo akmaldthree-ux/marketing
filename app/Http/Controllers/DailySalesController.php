@@ -21,10 +21,12 @@ class DailySalesController extends Controller {
             ->select(DB::raw('DATE(order_date) as day'),DB::raw('SUM(gmv) as gmv'),DB::raw('COUNT(*) as orders'))
             ->groupBy('day')->orderBy('day')->get();
 
+        $monthStart = now()->startOfMonth()->startOfDay();
+        $monthEnd   = now()->endOfDay();
         $summary = [
-            'today'      => Order::whereIn('store_id',$storeIds)->whereNotIn('status',$excludedStatuses)->whereDate('order_date',today())->sum('gmv'),
-            'yesterday'  => Order::whereIn('store_id',$storeIds)->whereNotIn('status',$excludedStatuses)->whereDate('order_date',today()->subDay())->sum('gmv'),
-            'this_month' => Order::whereIn('store_id',$storeIds)->whereNotIn('status',$excludedStatuses)->whereBetween('order_date',[$start,$end])->sum('gmv'),
+            'today'      => Order::whereIn('store_id',$storeIds)->whereNotIn('status',$excludedStatuses)->whereDate('order_date', now()->toDateString())->sum('gmv'),
+            'yesterday'  => Order::whereIn('store_id',$storeIds)->whereNotIn('status',$excludedStatuses)->whereDate('order_date', now()->subDay()->toDateString())->sum('gmv'),
+            'this_month' => Order::whereIn('store_id',$storeIds)->whereNotIn('status',$excludedStatuses)->whereBetween('order_date',[$monthStart,$monthEnd])->sum('gmv'),
         ];
 
         $stores        = Store::where('is_active',true)->orderBy('brand')->orderBy('name')->get();
