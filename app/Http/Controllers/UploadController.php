@@ -57,6 +57,7 @@ class UploadController extends Controller {
     private function parseXlsx(string $path): array {
         $zip = new \ZipArchive();
         if ($zip->open($path)!==true) throw new \RuntimeException('File XLSX tidak valid.');
+        // Build shared strings table (standard format)
         $shared = [];
         if ($ss=$zip->getFromName('xl/sharedStrings.xml')) {
             preg_match_all('/<si>(.*?)<\/si>/s',$ss,$siM);
@@ -65,10 +66,15 @@ class UploadController extends Controller {
                 $shared[]=html_entity_decode(implode('',$tM[1]),ENT_XML1,'UTF-8');
             }
         }
-        $sheetXml=null;
+        // Find first sheet (prefer sheet1, fallback to any sheet)
+        $sheetXml=null; $sheetName=null;
         for ($i=0;$i<$zip->numFiles;$i++) {
             $name=$zip->getNameIndex($i);
-            if (preg_match('#xl/worksheets/sheet\d+\.xml#',$name)) { $sheetXml=$zip->getFromIndex($i); break; }
+            if (preg_match('#xl/worksheets/sheet\d+\.xml#',$name)) {
+                if ($sheetName===null||strcmp($name,$sheetName)<0) {
+                    $sheetXml=$zip->getFromIndex($i); $sheetName=$name;
+                }
+            }
         }
         $zip->close();
         if (!$sheetXml) throw new \RuntimeException('Sheet tidak ditemukan dalam file XLSX.');
@@ -80,10 +86,19 @@ class UploadController extends Controller {
             foreach ($cellM as $cell) {
                 preg_match('/r="([^"]+)"/',$cell[1],$rM);
                 preg_match('/t="([^"]+)"/',$cell[1],$tM);
-                preg_match('/<v>(.*?)<\/v>/s',$cell[2],$vM);
                 $col=preg_replace('/[0-9]/','', $rM[1]??'');
-                $type=$tM[1]??''; $val=$vM[1]??'';
-                if ($type==='s') $val=$shared[(int)$val]??'';
+                $type=$tM[1]??'';
+                // inlineStr: <is><t>value</t></is>
+                if ($type==='inlineStr'||$type==='str') {
+                    preg_match('/<t[^>]*>(.*?)<\/t>/s',$cell[2],$isM);
+                    $val=html_entity_decode($isM[1]??'',ENT_XML1,'UTF-8');
+                } elseif ($type==='s') {
+                    preg_match('/<v>(.*?)<\/v>/s',$cell[2],$vM);
+                    $val=$shared[(int)($vM[1]??0)]??'';
+                } else {
+                    preg_match('/<v>(.*?)<\/v>/s',$cell[2],$vM);
+                    $val=$vM[1]??'';
+                }
                 if ($col!=='') $cells[$col]=trim($val);
             }
             if (!empty($cells)) $rawRows[]=$cells;
