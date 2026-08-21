@@ -148,7 +148,10 @@ class UploadController extends Controller {
             $dateRaw=$this->col($row,['waktu pesanan dibuat','waktu pembayaran dilakukan','order time','tanggal','date','order date','create time']);
             if (!$dateRaw) continue;
             try { $date=Carbon::parse($dateRaw)->toDateString(); } catch(\Exception $e){ continue; }
-            $gmv    =$this->num($this->col($row,['subtotal pesanan','harga setelah diskon','total harga produk','gmv','total pesanan','total pembayaran','total price','price']));
+            // Prioritas: Subtotal Pesanan (sudah termasuk diskon seller) > Harga Setelah Diskon > Total Pembayaran
+            $rawStatus = $this->col($row,['status pesanan','status','order status']) ?? '';
+            $isCancelled = str_contains(strtolower($rawStatus),'batal') || str_contains(strtolower($rawStatus),'cancel') || str_contains(strtolower($rawStatus),'belum bayar');
+            $gmv = $isCancelled ? 0 : $this->num($this->col($row,['subtotal pesanan','harga setelah diskon','total harga produk','gmv','total pesanan','total pembayaran','total price','price']));
             $qty    =(int)($this->num($this->col($row,['jumlah','qty','quantity','jumlah produk di pesan']))?:1);
             $sku    =$this->col($row,['sku induk','nomor referensi sku','sku','product sku'])??'-';
             $name   =$this->col($row,['nama produk','product name','nama barang','item name'])??'-';
@@ -253,12 +256,20 @@ class UploadController extends Controller {
     }
     private function mapStatus(string $raw): string {
         $r=strtolower(trim($raw));
+        // Shopee: "Pesanan diterima, namun Pembeli masih dapat mengajukan pengembalian hingga ..."
+        if (str_contains($r,'pesanan diterima')) return 'complete';
         if (str_contains($r,'selesai')||str_contains($r,'complete')||str_contains($r,'delivered')||str_contains($r,'completed')) return 'complete';
+        // Shopee: "Telah Dikirim", "Sedang Dikirim"
+        if (str_contains($r,'telah dikirim')||str_contains($r,'sedang dikirim')) return 'shipped';
         if (str_contains($r,'batal')||str_contains($r,'cancel')) return 'cancelled';
         if (str_contains($r,'retur')||str_contains($r,'return')) return 'returned';
         if (str_contains($r,'refund')) return 'refunded';
         if (str_contains($r,'kirim')||str_contains($r,'shipped')||str_contains($r,'shipping')||str_contains($r,'pengiriman')) return 'shipped';
+        // Shopee: "Perlu Dikirim" = siap dikemas/dikirim
+        if (str_contains($r,'perlu dikirim')) return 'processing';
         if (str_contains($r,'proses')||str_contains($r,'process')||str_contains($r,'packing')||str_contains($r,'dikemas')) return 'processing';
+        // Shopee: "Belum Bayar" = pending, jangan dihitung GMV
+        if (str_contains($r,'belum bayar')||str_contains($r,'unpaid')||str_contains($r,'pending')) return 'cancelled';
         return 'complete';
     }
 }
