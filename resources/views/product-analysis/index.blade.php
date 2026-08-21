@@ -3,13 +3,12 @@
 @section('page-title','Analisis Produk')
 @section('content')
 
-<form method="GET" class="d-flex gap-2 align-items-center mb-4 flex-wrap">
-  <input type="month" name="month" value="{{ $month }}" class="form-control form-control-sm" style="width:160px" onchange="this.form.submit()">
-  <select name="brand" class="form-select form-select-sm" style="width:140px" onchange="this.form.submit()">
+<x-date-range-filter :date-from="$dateFrom" :date-to="$dateTo">
+  <select name="brand" class="form-select form-select-sm" style="width:130px;border-radius:var(--rounded-full)">
     <option value="all" {{ $brand==='all'?'selected':'' }}>Semua Brand</option>
     @foreach(['DTHREE','HURIM','ASFARA'] as $b)<option value="{{ $b }}" {{ $brand===$b?'selected':'' }}>{{ $b }}</option>@endforeach
   </select>
-</form>
+</x-date-range-filter>
 
 @if($skus->isEmpty())
 <div class="card"><div class="card-body text-center text-muted py-5">

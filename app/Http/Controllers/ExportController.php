@@ -86,11 +86,17 @@ class ExportController extends Controller
     // Export Daily Sales ke CSV
     public function dailySales(Request $request)
     {
-        $month   = $request->get('month', now()->format('Y-m'));
-        $brand   = $request->get('brand', 'all');
-        [$year, $mon] = explode('-', $month);
-        $start = Carbon::create($year, $mon, 1)->startOfMonth();
-        $end   = Carbon::create($year, $mon, 1)->endOfMonth();
+        $brand = $request->get('brand', 'all');
+        $defaultFrom = now()->startOfMonth()->toDateString();
+        $defaultTo   = now()->toDateString();
+        if ($request->has('month') && !$request->has('date_from')) {
+            [$y,$m] = explode('-', $request->get('month'));
+            $defaultFrom = Carbon::create($y,$m,1)->startOfMonth()->toDateString();
+            $defaultTo   = Carbon::create($y,$m,1)->endOfMonth()->toDateString();
+        }
+        $start = Carbon::parse($request->get('date_from', $defaultFrom))->startOfDay();
+        $end   = Carbon::parse($request->get('date_to',   $defaultTo))->endOfDay();
+        $fileLabel = $start->toDateString().'_'.$end->toDateString();
 
         $storeIds = Store::where('is_active', true)
             ->when($brand !== 'all', fn($q) => $q->where('brand', $brand))
@@ -108,7 +114,7 @@ class ExportController extends Controller
             $rows[] = [$d->day, $d->gmv, $d->orders];
         }
 
-        return $this->csvResponse("daily_sales_{$month}.csv", $rows);
+        return $this->csvResponse("daily_sales_{$fileLabel}.csv", $rows);
     }
 
     private function monthlySum(string $table, string $col, string $storeCol, array $storeIds, string $dateCol, int $year, array $statuses = [])

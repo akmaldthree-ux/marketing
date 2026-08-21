@@ -6,11 +6,8 @@ use Carbon\Carbon;
 
 class CustomerController extends Controller {
     public function index(Request $request) {
-        $month    = $request->get('month', now()->format('Y-m'));
+        [$start, $end, $dateFrom, $dateTo] = $this->dateRange($request);
         $platform = $request->get('platform', 'all');
-        [$year, $mon] = explode('-', $month);
-        $start = Carbon::create($year, $mon, 1)->startOfMonth();
-        $end   = Carbon::create($year, $mon, 1)->endOfMonth();
 
         $storeIds    = Store::where('is_active', true)->pluck('id')->toArray();
         $gmvStatuses = Order::gmvStatuses();
@@ -20,10 +17,10 @@ class CustomerController extends Controller {
         $totalOrders = $newCustomers + $returningCustomers;
         $repeatRate  = $totalOrders > 0 ? round($returningCustomers / $totalOrders * 100, 1) : 0;
 
-        // Tren 6 bulan terakhir
+        // Tren 6 bulan terakhir (fixed lookback, not tied to selected range)
         $trendMonths = [];
         for ($i = 5; $i >= 0; $i--) {
-            $d    = Carbon::create($year, $mon, 1)->subMonths($i);
+            $d    = now()->subMonths($i);
             $s    = $d->copy()->startOfMonth();
             $e    = $d->copy()->endOfMonth();
             $newC = Order::whereIn('store_id', $storeIds)->where('is_new_customer', true)->whereIn('status', $gmvStatuses)->whereBetween('order_date', [$s, $e])->count();
@@ -41,6 +38,22 @@ class CustomerController extends Controller {
             ->when($platform !== 'all', fn($q) => $q->where('platform', $platform))
             ->orderByDesc('total_orders')->limit(20)->get();
 
-        return view('customers.index', compact('newCustomers', 'returningCustomers', 'repeatRate', 'topCustomers', 'month', 'platform', 'trendMonths'));
+        return view('customers.index', compact('newCustomers', 'returningCustomers', 'repeatRate', 'topCustomers', 'platform', 'trendMonths', 'dateFrom', 'dateTo'));
+    }
+
+    private function dateRange(Request $request): array {
+        $defaultFrom = now()->startOfMonth()->toDateString();
+        $defaultTo   = now()->toDateString();
+        if ($request->has('month') && !$request->has('date_from')) {
+            [$y,$m] = explode('-', $request->get('month'));
+            $defaultFrom = Carbon::create($y,$m,1)->startOfMonth()->toDateString();
+            $defaultTo   = Carbon::create($y,$m,1)->endOfMonth()->toDateString();
+        }
+        $dateFrom = $request->get('date_from', $defaultFrom);
+        $dateTo   = $request->get('date_to',   $defaultTo);
+        $start    = Carbon::parse($dateFrom)->startOfDay();
+        $end      = Carbon::parse($dateTo)->endOfDay();
+        if ($start->gt($end)) [$start, $end] = [$end, $start];
+        return [$start, $end, $start->toDateString(), $end->toDateString()];
     }
 }

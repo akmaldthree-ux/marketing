@@ -10,11 +10,22 @@ class ProductAnalysisController extends Controller
 {
     public function index(Request $request)
     {
-        $month = $request->get('month', now()->format('Y-m'));
         $brand = $request->get('brand', 'all');
-        [$year, $mon] = explode('-', $month);
-        $start = Carbon::create((int)$year, (int)$mon, 1)->startOfMonth()->toDateString();
-        $end   = Carbon::create((int)$year, (int)$mon, 1)->endOfMonth()->toDateString();
+        // Date range support (backward compat with ?month=)
+        $defaultFrom = now()->startOfMonth()->toDateString();
+        $defaultTo   = now()->toDateString();
+        if ($request->has('month') && !$request->has('date_from')) {
+            [$y,$m] = explode('-', $request->get('month'));
+            $defaultFrom = Carbon::create($y,$m,1)->startOfMonth()->toDateString();
+            $defaultTo   = Carbon::create($y,$m,1)->endOfMonth()->toDateString();
+        }
+        $dateFrom = $request->get('date_from', $defaultFrom);
+        $dateTo   = $request->get('date_to',   $defaultTo);
+        $startC   = Carbon::parse($dateFrom)->startOfDay();
+        $endC     = Carbon::parse($dateTo)->endOfDay();
+        if ($startC->gt($endC)) [$startC,$endC] = [$endC,$startC];
+        $start = $startC->toDateString();
+        $end   = $endC->toDateString();
 
         $storeIds = Store::where('is_active', true)
             ->when($brand !== 'all', fn($q) => $q->where('brand', $brand))
@@ -104,12 +115,12 @@ class ProductAnalysisController extends Controller
             $trend = $trendQuery->get()->groupBy('product_sku');
 
             for ($i = 2; $i >= 0; $i--) {
-                $trendLabels->push(Carbon::create((int)$year, (int)$mon, 1)->subMonths($i)->format('Y-m'));
+                $trendLabels->push($startC->copy()->subMonths($i)->format('Y-m'));
             }
         }
 
         $allStores = Store::where('is_active', true)->get();
 
-        return view('product-analysis.index', compact('skus', 'cancelRates', 'trend', 'trendLabels', 'allStores', 'month', 'brand'));
+        return view('product-analysis.index', compact('skus', 'cancelRates', 'trend', 'trendLabels', 'allStores', 'brand', 'dateFrom', 'dateTo'));
     }
 }

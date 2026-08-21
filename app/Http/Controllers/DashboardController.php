@@ -6,15 +6,15 @@ use Illuminate\Support\Facades\{Auth, DB};
 use Carbon\Carbon;
 class DashboardController extends Controller {
     public function index(Request $request) {
-        $month    = $request->get('month', now()->format('Y-m'));
-        $brand    = $request->get('brand', 'all');
-        [$year, $mon] = explode('-', $month);
-        $start    = Carbon::create($year, $mon, 1)->startOfMonth();
-        $end      = Carbon::create($year, $mon, 1)->endOfMonth();
-        $prevStart= $start->copy()->subMonth()->startOfMonth();
-        $prevEnd  = $start->copy()->subMonth()->endOfMonth();
+        [$start, $end, $dateFrom, $dateTo] = $this->dateRange($request);
+        $brand = $request->get('brand', 'all');
 
-        $storeIds = $this->storeIds($brand);
+        // "previous period" same duration length
+        $days      = $start->diffInDays($end) + 1;
+        $prevEnd   = $start->copy()->subDay();
+        $prevStart = $prevEnd->copy()->subDays($days - 1);
+
+        $storeIds    = $this->storeIds($brand);
         $gmvStatuses = Order::gmvStatuses();
 
         $totalGmv   = Order::whereIn('store_id',$storeIds)->whereIn('status',$gmvStatuses)->whereBetween('order_date',[$start,$end])->sum('gmv');
@@ -40,9 +40,15 @@ class DashboardController extends Controller {
 
         $brandProgress = [];
         foreach (['DTHREE','HURIM','ASFARA'] as $b) {
-            $bIds    = Store::where('brand',$b)->where('is_active',true)->pluck('id');
-            $actual  = Order::whereIn('store_id',$bIds)->whereIn('status',$gmvStatuses)->whereBetween('order_date',[$start,$end])->sum('gmv');
-            $target  = Target::whereIn('store_id',$bIds)->where('month',$mon)->where('year',$year)->sum('gmv_target');
+            $bIds   = Store::where('brand',$b)->where('is_active',true)->pluck('id');
+            $actual = Order::whereIn('store_id',$bIds)->whereIn('status',$gmvStatuses)->whereBetween('order_date',[$start,$end])->sum('gmv');
+            // Target: sum across months spanned by range
+            $target = 0;
+            $cur = $start->copy()->startOfMonth();
+            while ($cur->lte($end)) {
+                $target += Target::whereIn('store_id',$bIds)->where('month',$cur->month)->where('year',$cur->year)->sum('gmv_target');
+                $cur->addMonth();
+            }
             $brandProgress[$b] = ['actual'=>$actual,'target'=>$target,'pct'=>$target>0?min(100,round($actual/$target*100,1)):0];
         }
 
@@ -62,12 +68,31 @@ class DashboardController extends Controller {
             ];
         }
 
-        return view('dashboard.index', compact('totalGmv','prevGmv','gmvDelta','totalOrders','cancelRate','blendedRoas','avgCvr','gmvTrend','brandProgress','leaderboard','trendMonths','month','brand','year','mon'));
+        // Legacy compat vars for view
+        $year = $start->year; $mon = $start->month;
+        return view('dashboard.index', compact('totalGmv','prevGmv','gmvDelta','totalOrders','cancelRate','blendedRoas','avgCvr','gmvTrend','brandProgress','leaderboard','trendMonths','brand','year','mon','dateFrom','dateTo'));
     }
 
     private function storeIds(string $brand) {
         $q = Store::where('is_active', true);
         if ($brand !== 'all') $q->where('brand', $brand);
         return $q->pluck('id');
+    }
+
+    private function dateRange(Request $request): array {
+        $defaultFrom = now()->startOfMonth()->toDateString();
+        $defaultTo   = now()->toDateString();
+        // Backward compat: if old ?month= param used
+        if ($request->has('month') && !$request->has('date_from')) {
+            [$y,$m] = explode('-', $request->get('month'));
+            $defaultFrom = Carbon::create($y,$m,1)->startOfMonth()->toDateString();
+            $defaultTo   = Carbon::create($y,$m,1)->endOfMonth()->toDateString();
+        }
+        $dateFrom = $request->get('date_from', $defaultFrom);
+        $dateTo   = $request->get('date_to',   $defaultTo);
+        $start    = Carbon::parse($dateFrom)->startOfDay();
+        $end      = Carbon::parse($dateTo)->endOfDay();
+        if ($start->gt($end)) [$start, $end] = [$end, $start];
+        return [$start, $end, $start->toDateString(), $end->toDateString()];
     }
 }

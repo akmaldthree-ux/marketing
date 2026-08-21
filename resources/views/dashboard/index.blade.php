@@ -3,14 +3,12 @@
 @section('page-title','Overview Dashboard')
 @section('content')
 {{-- Filters --}}
-<form method="GET" class="d-flex gap-2 align-items-center mb-4 flex-wrap">
-  <input type="month" name="month" value="{{ $month }}" class="form-control form-control-sm" style="width:160px">
-  <select name="brand" class="form-select form-select-sm" style="width:140px">
+<x-date-range-filter :date-from="$dateFrom" :date-to="$dateTo">
+  <select name="brand" class="form-select form-select-sm" style="width:130px;border-radius:var(--rounded-full)">
     <option value="all" {{ $brand==='all'?'selected':'' }}>Semua Brand</option>
     @foreach(['DTHREE','HURIM','ASFARA'] as $b)<option value="{{ $b }}" {{ $brand===$b?'selected':'' }}>{{ $b }}</option>@endforeach
   </select>
-  <button class="btn btn-primary btn-sm px-3">Filter</button>
-</form>
+</x-date-range-filter>
 
 {{-- KPI Cards --}}
 <div class="row g-3 mb-4">

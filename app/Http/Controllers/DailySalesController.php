@@ -6,12 +6,9 @@ use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 class DailySalesController extends Controller {
     public function index(Request $request) {
-        $month  = $request->get('month', now()->format('Y-m'));
-        $brand  = $request->get('brand', 'all');
-        $storeId= $request->get('store_id', 'all');
-        [$year, $mon] = explode('-', $month);
-        $start  = Carbon::create($year,$mon,1)->startOfMonth();
-        $end    = Carbon::create($year,$mon,1)->endOfMonth();
+        [$start, $end, $dateFrom, $dateTo] = $this->dateRange($request);
+        $brand   = $request->get('brand', 'all');
+        $storeId = $request->get('store_id', 'all');
         $gmvStatuses = Order::gmvStatuses();
 
         $storeIds = Store::where('is_active',true)
@@ -36,6 +33,22 @@ class DailySalesController extends Controller {
             'orders' => Order::where('store_id',$s->id)->whereIn('status',$gmvStatuses)->whereBetween('order_date',[$start,$end])->count(),
         ])->sortByDesc('gmv')->values();
 
-        return view('daily-sales.index', compact('daily','summary','stores','storeBreakdown','month','brand','storeId'));
+        return view('daily-sales.index', compact('daily','summary','stores','storeBreakdown','brand','storeId','dateFrom','dateTo'));
+    }
+
+    private function dateRange(Request $request): array {
+        $defaultFrom = now()->startOfMonth()->toDateString();
+        $defaultTo   = now()->toDateString();
+        if ($request->has('month') && !$request->has('date_from')) {
+            [$y,$m] = explode('-', $request->get('month'));
+            $defaultFrom = Carbon::create($y,$m,1)->startOfMonth()->toDateString();
+            $defaultTo   = Carbon::create($y,$m,1)->endOfMonth()->toDateString();
+        }
+        $dateFrom = $request->get('date_from', $defaultFrom);
+        $dateTo   = $request->get('date_to',   $defaultTo);
+        $start    = Carbon::parse($dateFrom)->startOfDay();
+        $end      = Carbon::parse($dateTo)->endOfDay();
+        if ($start->gt($end)) [$start, $end] = [$end, $start];
+        return [$start, $end, $start->toDateString(), $end->toDateString()];
     }
 }

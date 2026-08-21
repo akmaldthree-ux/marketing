@@ -2,21 +2,20 @@
 @section('title','Daily Sales')
 @section('page-title','Daily Sales')
 @section('content')
-<form method="GET" class="d-flex gap-2 align-items-center mb-4 flex-wrap">
-  <input type="month" name="month" value="{{ $month }}" class="form-control form-control-sm" style="width:160px">
-  <select name="brand" class="form-select form-select-sm" style="width:140px">
+<x-date-range-filter :date-from="$dateFrom" :date-to="$dateTo">
+  <select name="brand" class="form-select form-select-sm" style="width:130px;border-radius:var(--rounded-full)">
     <option value="all" {{ $brand==='all'?'selected':'' }}>Semua Brand</option>
     @foreach(['DTHREE','HURIM','ASFARA'] as $b)<option value="{{ $b }}" {{ $brand===$b?'selected':'' }}>{{ $b }}</option>@endforeach
   </select>
-  <select name="store_id" class="form-select form-select-sm" style="width:200px">
+  <select name="store_id" class="form-select form-select-sm" style="width:180px;border-radius:var(--rounded-full)">
     <option value="all" {{ $storeId==='all'?'selected':'' }}>Semua Toko</option>
     @foreach($stores as $s)<option value="{{ $s->id }}" {{ $storeId==$s->id?'selected':'' }}>{{ $s->name }}</option>@endforeach
   </select>
-  <button class="btn btn-primary btn-sm px-3">Filter</button>
-  <a href="{{ route('export.daily-sales', ['month'=>$month,'brand'=>$brand]) }}" class="btn btn-success btn-sm">
+  <a href="{{ route('export.daily-sales', ['date_from'=>$dateFrom,'date_to'=>$dateTo,'brand'=>$brand]) }}"
+     class="btn btn-sm" style="border-radius:var(--rounded-full);border:1px solid var(--color-hairline);background:var(--color-surface-card)">
     <i class="bi bi-download me-1"></i>Export CSV
   </a>
-</form>
+</x-date-range-filter>
 
 <div class="row g-3 mb-4">
   <div class="col-sm-4">

@@ -2,14 +2,12 @@
 @section('title','ROAS & Iklan')
 @section('page-title','ROAS & Performa Iklan')
 @section('content')
-<form method="GET" class="d-flex gap-2 align-items-center mb-4 flex-wrap">
-  <input type="month" name="month" value="{{ $month }}" class="form-control form-control-sm" style="width:160px">
-  <select name="platform" class="form-select form-select-sm" style="width:160px">
+<x-date-range-filter :date-from="$dateFrom" :date-to="$dateTo">
+  <select name="platform" class="form-select form-select-sm" style="width:160px;border-radius:var(--rounded-full)">
     <option value="all" {{ $platform==='all'?'selected':'' }}>Semua Platform</option>
     @foreach(['Shopee','TikTok Shop','Meta Ads'] as $p)<option value="{{ $p }}" {{ $platform===$p?'selected':'' }}>{{ $p }}</option>@endforeach
   </select>
-  <button class="btn btn-primary btn-sm px-3">Filter</button>
-</form>
+</x-date-range-filter>
 
 <div class="row g-3 mb-4">
   <div class="col-sm-4">
