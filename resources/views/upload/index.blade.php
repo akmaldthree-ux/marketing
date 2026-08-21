@@ -43,7 +43,18 @@
   </div>
   <div class="col-md-7">
     <div class="card">
-      <div class="card-header"><i class="bi bi-clock-history me-2"></i>Riwayat Upload (30 terakhir)</div>
+      <div class="card-header d-flex align-items-center justify-content-between">
+        <span><i class="bi bi-clock-history me-2"></i>Riwayat Upload (30 terakhir)</span>
+        @if(auth()->user()?->role === 'admin')
+        <form method="POST" action="{{ route('admin.clear-reports') }}"
+          onsubmit="return confirm('⚠️ Ini akan menghapus SEMUA data transaksi (orders, ads, metrics, financials, customers, dan log upload).\n\nData master (toko, target, produk) tidak terpengaruh.\n\nLanjutkan?')">
+          @csrf
+          <button type="submit" class="btn btn-sm btn-outline-danger" style="border-radius:var(--rounded-full);font-size:.75rem">
+            <i class="bi bi-trash3 me-1"></i>Hapus Semua Data
+          </button>
+        </form>
+        @endif
+      </div>
       <div class="card-body p-0">
         <table class="table table-sm table-hover mb-0" style="font-size:.8rem;">
           <thead class="table-light"><tr><th>Toko</th><th>Tipe</th><th>File</th><th>Baris</th><th>Status</th><th>Waktu</th><th></th></tr></thead>

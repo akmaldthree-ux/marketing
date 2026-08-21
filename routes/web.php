@@ -75,6 +75,9 @@ Route::middleware('auth')->group(function () {
         Route::post('/import/hpp', [ImportController::class, 'importHpp'])->name('import.hpp');
         Route::post('/import/biaya-ops', [ImportController::class, 'importBiayaOps'])->name('import.biaya-ops');
         Route::post('/import/funnel-target', [ImportController::class, 'importFunnelTarget'])->name('import.funnel-target');
+
+        // Admin: hapus semua data transaksi
+        Route::post('/admin/clear-reports', [UploadController::class, 'clearReports'])->name('admin.clear-reports');
     });
 
     // Template downloads (semua user bisa download)

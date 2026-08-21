@@ -42,6 +42,18 @@ class UploadController extends Controller {
         return back()->with('success', 'Log dihapus.');
     }
 
+    public function clearReports() {
+        DB::statement('SET FOREIGN_KEY_CHECKS=0');
+        $counts = [];
+        foreach (['upload_logs','orders','ads_performance','store_metrics','financials','customers'] as $t) {
+            $counts[$t] = DB::table($t)->count();
+            DB::table($t)->truncate();
+        }
+        DB::statement('SET FOREIGN_KEY_CHECKS=1');
+        $total = array_sum($counts);
+        return back()->with('success', "Semua data transaksi berhasil dihapus ({$total} baris dihapus total).");
+    }
+
     private function parseCsv(string $path): array {
         $rows = [];
         if (!($fh = fopen($path,'r'))) throw new \RuntimeException('Tidak bisa membuka file.');
