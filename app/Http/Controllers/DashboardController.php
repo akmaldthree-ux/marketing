@@ -9,7 +9,7 @@ class DashboardController extends Controller {
         [$start, $end, $dateFrom, $dateTo] = $this->dateRange($request);
         $brand = $request->get('brand', 'all');
 
-        $days      = $start->diffInDays($end) + 1;
+        $days      = (int) round($start->diffInDays($end)) + 1;
         $prevEnd   = $start->copy()->subDay();
         $prevStart = $prevEnd->copy()->subDays($days - 1);
 
