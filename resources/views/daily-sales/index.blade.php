@@ -59,8 +59,8 @@
   </div>
   <div class="col-lg-5">
     <div class="card h-100">
-      <div class="card-header">Kumulatif GMV</div>
-      <div class="card-body"><canvas id="cumulativeChart" height="130"></canvas></div>
+      <div class="card-header">Tren GMV &amp; Orders</div>
+      <div class="card-body"><canvas id="trendChart" height="130"></canvas></div>
     </div>
   </div>
 </div>
@@ -147,25 +147,43 @@ new Chart(document.getElementById('dailyChart'), {
   }
 });
 
-// Cumulative line chart
-new Chart(document.getElementById('cumulativeChart'), {
+// Trend line: GMV + Orders dual axis
+new Chart(document.getElementById('trendChart'), {
   type: 'line',
   data: {
     labels,
-    datasets: [{
-      label: 'Kumulatif',
-      data: d.map(x => x.running),
-      borderColor: '#10b981',
-      backgroundColor: 'rgba(16,185,129,.1)',
-      tension: .3,
-      fill: true,
-      pointRadius: 3
-    }]
+    datasets: [
+      {
+        label: 'GMV',
+        data: d.map(x => x.gmv),
+        borderColor: '#7c6ff7',
+        backgroundColor: 'rgba(124,111,247,.08)',
+        tension: .35,
+        fill: true,
+        pointRadius: 3,
+        yAxisID: 'y'
+      },
+      {
+        label: 'Orders',
+        data: d.map(x => x.orders),
+        borderColor: '#f59e0b',
+        backgroundColor: 'transparent',
+        tension: .35,
+        fill: false,
+        pointRadius: 3,
+        borderDash: [4,3],
+        yAxisID: 'y2'
+      }
+    ]
   },
   options: {
     responsive: true,
-    plugins: { legend: { display: false } },
-    scales: { y: { ticks: { callback: v => 'Rp ' + new Intl.NumberFormat('id').format(v) } } }
+    interaction: { mode: 'index', intersect: false },
+    plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } } },
+    scales: {
+      y:  { position: 'left',  ticks: { callback: v => 'Rp '+new Intl.NumberFormat('id').format(v) } },
+      y2: { position: 'right', grid: { drawOnChartArea: false }, ticks: { callback: v => v+' ord' } }
+    }
   }
 });
 </script>
