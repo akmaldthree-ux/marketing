@@ -144,7 +144,6 @@ class UploadController extends Controller {
             $row=array_change_key_case($row,CASE_LOWER);
             $orderNum=$this->col($row,['no. pesanan','order id','order_id','nomor pesanan','no pesanan']);
             if (!$orderNum) continue;
-            if (Order::where('order_number',$orderNum)->exists()) continue;
             $dateRaw=$this->col($row,['waktu pesanan dibuat','waktu pembayaran dilakukan','order time','tanggal','date','order date','create time']);
             if (!$dateRaw) continue;
             try { $date=Carbon::parse($dateRaw)->toDateString(); } catch(\Exception $e){ continue; }
@@ -157,6 +156,19 @@ class UploadController extends Controller {
             $name   =$this->col($row,['nama produk','product name','nama barang','item name'])??'-';
             $buyer  =$this->col($row,['username (pembeli)','buyer','username','buyer username','nama pembeli'])?? 'unknown';
             $status =$this->mapStatus($this->col($row,['status pesanan','status','order status'])?? 'complete');
+            // Cek apakah order_number sudah ada (1 order bisa punya banyak produk di Shopee)
+            $existing = Order::where('order_number',$orderNum)->first();
+            if ($existing) {
+                // Akumulasi GMV dan qty untuk order yang sama (multi-produk)
+                $existing->increment('gmv', $gmv);
+                $existing->increment('qty', $qty);
+                // Gabungkan nama produk jika berbeda
+                if ($sku !== '-' && !str_contains($existing->product_sku??'', $sku)) {
+                    $existing->update(['product_name'=>($existing->product_name??'').' | '.$name,'product_sku'=>($existing->product_sku??'').' | '.$sku]);
+                }
+                $count++;
+                continue;
+            }
             $isNew  =!Customer::where('username',$buyer)->where('platform',$store->platform)->exists();
             $customer=Customer::firstOrCreate(
                 ['username'=>$buyer,'platform'=>$store->platform],
