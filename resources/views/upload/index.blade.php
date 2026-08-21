@@ -135,8 +135,16 @@
             </td>
             <td class="text-nowrap">{{ $log->store?->name ?? '—' }}</td>
             <td>
-              @php $typeColors=['orders'=>'primary','financials'=>'success','ads'=>'warning','metrics'=>'info']; @endphp
-              <span class="badge bg-{{ $typeColors[$log->report_type]??'secondary' }} bg-opacity-15 text-{{ $typeColors[$log->report_type]??'secondary' }} border border-{{ $typeColors[$log->report_type]??'secondary' }}-subtle">
+              @php
+                $typeMeta = [
+                  'orders'     => ['bg'=>'#e0e7ff','color'=>'#3730a3'],
+                  'financials' => ['bg'=>'#dcfce7','color'=>'#166534'],
+                  'ads'        => ['bg'=>'#fef9c3','color'=>'#854d0e'],
+                  'metrics'    => ['bg'=>'#e0f2fe','color'=>'#075985'],
+                ];
+                $tm = $typeMeta[$log->report_type] ?? ['bg'=>'#f3f4f6','color'=>'#374151'];
+              @endphp
+              <span style="background:{{ $tm['bg'] }};color:{{ $tm['color'] }};border-radius:6px;padding:2px 8px;font-size:.75rem;font-weight:600;white-space:nowrap">
                 {{ $log->report_type }}
               </span>
             </td>
