@@ -85,4 +85,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/template/hpp', [ImportController::class, 'templateHpp'])->name('template.hpp');
     Route::get('/template/biaya-ops', [ImportController::class, 'templateBiayaOps'])->name('template.biaya-ops');
     Route::get('/template/funnel-target', [ImportController::class, 'templateFunnelTarget'])->name('template.funnel-target');
+    Route::get('/template/orders', [ImportController::class, 'templateOrders'])->name('template.orders');
+    Route::get('/template/ads', [ImportController::class, 'templateAds'])->name('template.ads');
+    Route::get('/template/metrics', [ImportController::class, 'templateMetrics'])->name('template.metrics');
+    Route::get('/template/financials', [ImportController::class, 'templateFinancials'])->name('template.financials');
 });

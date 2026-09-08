@@ -61,8 +61,14 @@
           </div>
           <div class="mb-3">
             <label class="form-label small fw-semibold">File</label>
-            <input type="file" name="file" class="form-control form-control-sm" accept=".csv,.xlsx,.xls" required>
+            <input type="file" name="file" id="fileInput" class="form-control form-control-sm" accept=".csv,.xlsx,.xls" required>
             <div class="form-text">Maks. 20 MB. Format: .xlsx / .xls / .csv</div>
+            {{-- Download template link, muncul saat tipe dipilih --}}
+            <div id="templateLinks" class="mt-2" style="display:none">
+              <a id="templateLink" href="#" class="btn btn-sm btn-outline-secondary w-100" style="font-size:.75rem;border-radius:var(--rounded-full)">
+                <i class="bi bi-download me-1"></i>Download Template Excel
+              </a>
+            </div>
           </div>
           @if($errors->any())
           <div class="alert alert-danger py-2 small">{{ $errors->first() }}</div>
@@ -192,4 +198,38 @@
     </div>
   </div>
 </div>
+@push('scripts')
+<script>
+(function(){
+  const templates = {
+    orders:     '{{ route("template.orders") }}',
+    ads:        '{{ route("template.ads") }}',
+    metrics:    '{{ route("template.metrics") }}',
+    financials: '{{ route("template.financials") }}',
+  };
+  const typeLabels = {
+    orders: 'Template Orders (WA/Manual)',
+    ads: 'Template Ads Performance',
+    metrics: 'Template Store Metrics',
+    financials: 'Template Financials',
+  };
+  const sel  = document.querySelector('select[name="report_type"]');
+  const box  = document.getElementById('templateLinks');
+  const link = document.getElementById('templateLink');
+  if (sel && box && link) {
+    sel.addEventListener('change', function() {
+      const v = this.value;
+      if (templates[v]) {
+        link.href = templates[v];
+        link.querySelector('span, i').nextSibling && null;
+        link.innerHTML = '<i class="bi bi-download me-1"></i>' + typeLabels[v];
+        box.style.display = '';
+      } else {
+        box.style.display = 'none';
+      }
+    });
+  }
+})();
+</script>
+@endpush
 @endsection

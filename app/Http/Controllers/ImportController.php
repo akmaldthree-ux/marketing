@@ -77,6 +77,84 @@ class ImportController extends Controller
         return XlsxWriter::download('template_funnel_target.xlsx', $rows);
     }
 
+    public function templateOrders()
+    {
+        $rows = [
+            ['No. Pesanan','Waktu Pesanan Dibuat','Status Pesanan','Subtotal Pesanan','Nama Produk','SKU Induk','Jumlah','Username (Pembeli)'],
+            ['WA-20260801-001','2026-08-01','Selesai','350000','Gamis Syari Premium','DTH-001','1','pelanggan_a'],
+            ['WA-20260801-002','2026-08-01','Selesai','190000','Mukena Travel | Sajadah Mini','DTH-002 | DTH-010','2','pelanggan_b'],
+            ['WA-20260802-001','2026-08-02','Batal','150000','Gamis Anak','DTH-005','1','pelanggan_c'],
+        ];
+        $rows[] = [];
+        $rows[] = ['# PETUNJUK PENGISIAN:'];
+        $rows[] = ['# No. Pesanan   : Nomor unik per transaksi, contoh: WA-YYYYMMDD-001'];
+        $rows[] = ['# Waktu         : Format tanggal YYYY-MM-DD atau DD/MM/YYYY'];
+        $rows[] = ['# Status        : Selesai / Batal / Belum Bayar / Perlu Dikirim / Sedang Dikirim / Telah Dikirim'];
+        $rows[] = ['# Subtotal      : Harga total yang dibayar pembeli (Rupiah, tanpa titik/koma)'];
+        $rows[] = ['# Nama Produk   : Boleh diisi tanda hubung (-) jika tidak ada'];
+        $rows[] = ['# SKU Induk     : Boleh diisi tanda hubung (-) jika tidak ada SKU'];
+        $rows[] = ['# Jumlah        : Qty item yang dibeli'];
+        $rows[] = ['# Username      : Nama/nomor WA pembeli (untuk tracking customer baru vs returning)'];
+        $rows[] = [];
+        $rows[] = ['# STATUS YANG DIHITUNG SEBAGAI GMV:'];
+        $rows[] = ['# Selesai, Telah Dikirim, Sedang Dikirim, Perlu Dikirim'];
+        $rows[] = ['# STATUS YANG DIKECUALIKAN DARI GMV:'];
+        $rows[] = ['# Batal, Belum Bayar'];
+        return XlsxWriter::download('template_orders_manual.xlsx', $rows);
+    }
+
+    public function templateAds()
+    {
+        $rows = [
+            ['Tanggal','Pengeluaran Iklan','GMV dari Iklan','Tayangan','Klik','Konversi','Nama Kampanye'],
+            ['2026-08-01','150000','1250000','12500','380','8','Campaign Ramadan 2026'],
+            ['2026-08-02','175000','1480000','14200','410','9','Campaign Ramadan 2026'],
+        ];
+        $rows[] = [];
+        $rows[] = ['# PETUNJUK:'];
+        $rows[] = ['# Tanggal          : Format YYYY-MM-DD'];
+        $rows[] = ['# Pengeluaran Iklan: Total biaya iklan hari itu (Rp)'];
+        $rows[] = ['# GMV dari Iklan   : Total penjualan yang berasal dari iklan (Rp)'];
+        $rows[] = ['# Tayangan         : Jumlah impresi iklan'];
+        $rows[] = ['# Klik             : Jumlah klik'];
+        $rows[] = ['# Konversi         : Jumlah order dari iklan'];
+        $rows[] = ['# Nama Kampanye    : Nama campaign (boleh dikosongkan)'];
+        return XlsxWriter::download('template_ads_performance.xlsx', $rows);
+    }
+
+    public function templateMetrics()
+    {
+        $rows = [
+            ['Tanggal','Tayangan Produk','Pengunjung','Tambah ke Keranjang','Checkout','Pembeli'],
+            ['2026-08-01','45200','3100','820','410','185'],
+            ['2026-08-02','48600','3350','890','445','201'],
+        ];
+        $rows[] = [];
+        $rows[] = ['# PETUNJUK:'];
+        $rows[] = ['# Tanggal              : Format YYYY-MM-DD'];
+        $rows[] = ['# Tayangan Produk      : Jumlah produk dilihat'];
+        $rows[] = ['# Pengunjung           : Unique visitor toko'];
+        $rows[] = ['# Tambah ke Keranjang  : Jumlah ATC'];
+        $rows[] = ['# Checkout             : Jumlah yang sampai halaman bayar'];
+        $rows[] = ['# Pembeli              : Jumlah yang berhasil bayar'];
+        return XlsxWriter::download('template_store_metrics.xlsx', $rows);
+    }
+
+    public function templateFinancials()
+    {
+        $rows = [
+            ['Periode','Gross GMV','Net GMV','Biaya Admin','Promo','Ongkir','Settlement','HPP','Biaya Iklan','Biaya Operasional'],
+            ['2026-08','85000000','72000000','3500000','2000000','1500000','65000000','28000000','5000000','8000000'],
+        ];
+        $rows[] = [];
+        $rows[] = ['# PETUNJUK:'];
+        $rows[] = ['# Periode          : Format YYYY-MM (contoh: 2026-08)'];
+        $rows[] = ['# Semua angka      : Rupiah tanpa titik/koma (contoh: 85000000)'];
+        $rows[] = ['# Net GMV          : Boleh dikosongkan (dihitung otomatis: Gross - Biaya Admin)'];
+        $rows[] = ['# Settlement       : Dana yang dicairkan platform'];
+        return XlsxWriter::download('template_financials.xlsx', $rows);
+    }
+
     // ── Import Processors ─────────────────────────────────────────────────────
 
     public function importTargetGmv(Request $request)
