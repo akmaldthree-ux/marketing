@@ -152,15 +152,18 @@ class UploadController extends Controller {
             $rowN = (int) preg_replace('/[^0-9]/','', $ref); // misal 1, 42
             if ($col===''||$rowN===0) continue;
             $type = $tM[1]??'';
-            if ($type==='inlineStr'||$type==='str') {
+            if ($type==='inlineStr') {
+                // <is><t>value</t></is>
                 preg_match('/<t[^>]*>(.*?)<\/t>/s',$cell[2],$isM);
                 $val=html_entity_decode($isM[1]??'',ENT_XML1,'UTF-8');
             } elseif ($type==='s') {
+                // shared string index
                 preg_match('/<v>(.*?)<\/v>/s',$cell[2],$vM);
                 $val=$shared[(int)($vM[1]??0)]??'';
             } else {
+                // t="str" (formula string result), numeric, or no type → nilai di <v>
                 preg_match('/<v>(.*?)<\/v>/s',$cell[2],$vM);
-                $val=$vM[1]??'';
+                $val=html_entity_decode($vM[1]??'',ENT_XML1,'UTF-8');
             }
             $cellsByRow[$rowN][$col]=trim($val);
         }
