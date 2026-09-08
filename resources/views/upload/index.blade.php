@@ -95,19 +95,6 @@
       </div>
     </div>
 
-    <div class="card mt-3">
-      <div class="card-header"><i class="bi bi-database-gear me-2"></i>Setup Database</div>
-      <div class="card-body">
-        <p class="small text-muted mb-2">Jalankan migrasi database agar fitur hapus per-file berfungsi. Cukup sekali setelah update.</p>
-        <form method="POST" action="{{ route('admin.migrate') }}"
-          onsubmit="return confirm('Jalankan migrasi database?\n\nPastikan tidak ada upload yang sedang berjalan.')">
-          @csrf
-          <button type="submit" class="btn btn-sm btn-outline-primary w-100">
-            <i class="bi bi-play-circle me-1"></i>Jalankan Migrasi
-          </button>
-        </form>
-      </div>
-    </div>
     @endif
   </div>
 

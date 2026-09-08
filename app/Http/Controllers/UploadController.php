@@ -90,16 +90,6 @@ class UploadController extends Controller {
         return back()->with('success', "File \"{$log->filename}\" dan {$deleted} baris data berhasil dihapus.");
     }
 
-    public function runMigrate() {
-        try {
-            \Illuminate\Support\Facades\Artisan::call('migrate', ['--force' => true]);
-            $output = \Illuminate\Support\Facades\Artisan::output();
-            return back()->with('success', 'Migrasi berhasil dijalankan. '.$output);
-        } catch (\Throwable $e) {
-            return back()->with('error', 'Migrasi gagal: '.$e->getMessage());
-        }
-    }
-
     public function clearReports() {
         DB::statement('SET FOREIGN_KEY_CHECKS=0');
         $counts = [];
