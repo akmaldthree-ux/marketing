@@ -271,8 +271,15 @@ class UploadController extends Controller {
             $rawStatus = $this->col($row,['status pesanan','status','order status']) ?? '';
             $isCancelled = str_contains(strtolower($rawStatus),'batal') || str_contains(strtolower($rawStatus),'cancel') || str_contains(strtolower($rawStatus),'belum bayar');
             // CRM Meta: GROSS sudah termasuk ongkir, gunakan langsung
-            // TikTok: pakai "sku subtotal after discount" sebagai GMV (harga setelah semua diskon, tanpa ongkir)
-            $gmv = $isCancelled ? 0 : $this->num($this->col($row,['sku subtotal after discount','subtotal pesanan','harga setelah diskon','total harga produk','gmv','total pesanan','total pembayaran','total price','price','gross']));
+            // TikTok: GMV = SKU Subtotal Before Discount - SKU Seller Discount
+            // (diskon platform tidak dikurangi, hanya diskon seller)
+            $beforeDiscount = $this->num($this->col($row,['sku subtotal before discount']));
+            $sellerDiscount = $this->num($this->col($row,['sku seller discount']));
+            if ($beforeDiscount > 0) {
+                $gmv = $isCancelled ? 0 : max(0, $beforeDiscount - $sellerDiscount);
+            } else {
+                $gmv = $isCancelled ? 0 : $this->num($this->col($row,['subtotal pesanan','harga setelah diskon','total harga produk','gmv','total pesanan','total pembayaran','total price','price','gross']));
+            }
             $qty    =(int)($this->num($this->col($row,['jumlah','qty','quantity','jumlah produk di pesan']))?:1);
             $sku    =$this->col($row,['seller sku','sku induk','nomor referensi sku','sku','product sku','kode sku produk'])??'-';
             $name   =$this->col($row,['nama produk','product name','nama barang','item name'])??'-';
