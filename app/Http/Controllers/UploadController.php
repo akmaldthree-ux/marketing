@@ -237,7 +237,14 @@ class UploadController extends Controller {
             if ($dateRaw && is_numeric($dateRaw) && (float)$dateRaw > 40000) {
                 $date = $this->excelDate($dateRaw);
             } elseif ($dateRaw) {
-                try { $date=Carbon::parse($dateRaw)->toDateString(); } catch(\Exception $e){ $date=null; }
+                try {
+                    // TikTok pakai format DD/MM/YYYY HH:MM:SS — Carbon::parse salah baca sebagai MM/DD
+                    if (preg_match('/^(\d{2})\/(\d{2})\/(\d{4})/', $dateRaw, $dm)) {
+                        $date = Carbon::createFromFormat('d/m/Y', $dm[1].'/'.$dm[2].'/'.$dm[3])->toDateString();
+                    } else {
+                        $date = Carbon::parse($dateRaw)->toDateString();
+                    }
+                } catch(\Exception $e){ $date=null; }
             } else { $date=null; }
             // CRM Meta: baris tanpa tanggal → pakai tanggal baris sebelumnya
             if ($date) { $lastValidDate=$date; } else { $date=$lastValidDate; }
