@@ -238,13 +238,16 @@ class UploadController extends Controller {
             $name   =$this->col($row,['nama produk','product name','nama barang','item name'])??'-';
             $buyer  =$this->col($row,['username (pembeli)','buyer','username','buyer username','nama pembeli','nama'])?? 'unknown';
             $status =$this->mapStatus($rawStatus ?: 'complete');
-            // Cek apakah order_number sudah ada (1 order bisa punya banyak produk di Shopee)
+            // Cek apakah order_number sudah ada
             $existing = Order::where('order_number',$orderNum)->first();
             if ($existing) {
-                // Akumulasi GMV dan qty untuk order yang sama (multi-produk)
+                // Akumulasi GMV hanya untuk Shopee (multi-produk dalam 1 order).
+                // CRM Meta: order ID adalah META-hash → tiap baris = 1 order unik → skip jika sudah ada.
+                if (str_starts_with($orderNum, 'META-')) {
+                    continue; // sudah terimport, skip
+                }
                 $existing->increment('gmv', $gmv);
                 $existing->increment('qty', $qty);
-                // Gabungkan nama produk jika berbeda
                 if ($sku !== '-' && !str_contains($existing->product_sku??'', $sku)) {
                     $existing->update(['product_name'=>($existing->product_name??'').' | '.$name,'product_sku'=>($existing->product_sku??'').' | '.$sku]);
                 }
