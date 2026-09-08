@@ -188,29 +188,33 @@ class UploadController extends Controller {
 
     private function processOrders(array $rows, Store $store, int $logId = 0): int {
         $count=0;
+        $lastValidDate = null; // fallback untuk baris CRM Meta yang tanggalnya kosong
         foreach ($rows as $row) {
             $row=array_change_key_case($row,CASE_LOWER);
+            $dateRaw=$this->col($row,['waktu pesanan dibuat','waktu pembayaran dilakukan','order time','tanggal','date','order date','create time','pesanan tanggal']);
+            // Handle Excel serial date (misal: 46113.0) dari CRM Meta
+            if ($dateRaw && is_numeric($dateRaw) && (float)$dateRaw > 40000) {
+                $date = $this->excelDateToString($dateRaw);
+            } elseif ($dateRaw) {
+                try { $date=Carbon::parse($dateRaw)->toDateString(); } catch(\Exception $e){ $date=null; }
+            } else {
+                $date = null;
+            }
+            // Kalau tanggal kosong, pakai tanggal baris valid terakhir (CRM Meta kadang tidak isi ulang)
+            if ($date) { $lastValidDate = $date; } else { $date = $lastValidDate; }
+            if (!$date) continue;
+
             // No. Pesanan: Shopee pakai "no. pesanan", CRM Meta pakai "no resi" sebagai pengganti.
             // Jika No Resi kosong (September Meta tidak mengisi), buat ID dari NAMA+TANGGAL+GROSS.
             $orderNum=$this->col($row,['no. pesanan','order id','order_id','nomor pesanan','no pesanan','no resi']);
             if (!$orderNum) {
                 $nameForId  = $this->col($row,['nama','nama pembeli','username (pembeli)','buyer']) ?? '';
                 $grossForId = $this->col($row,['gross','subtotal pesanan','total harga produk']) ?? '';
-                $dateForId  = $this->col($row,['pesanan tanggal','waktu pesanan dibuat','tanggal','date']) ?? '';
-                if ($nameForId && $dateForId && $grossForId) {
-                    $orderNum = 'META-'.md5($nameForId.'|'.$dateForId.'|'.$grossForId);
+                if ($nameForId && $date && $grossForId) {
+                    $orderNum = 'META-'.md5($nameForId.'|'.$date.'|'.$grossForId);
                 }
             }
             if (!$orderNum) continue;
-            $dateRaw=$this->col($row,['waktu pesanan dibuat','waktu pembayaran dilakukan','order time','tanggal','date','order date','create time','pesanan tanggal']);
-            if (!$dateRaw) continue;
-            // Handle Excel serial date (misal: 46113.0) dari CRM Meta
-            if (is_numeric($dateRaw) && (float)$dateRaw > 40000) {
-                $date = $this->excelDateToString($dateRaw);
-                if (!$date) continue;
-            } else {
-                try { $date=Carbon::parse($dateRaw)->toDateString(); } catch(\Exception $e){ continue; }
-            }
             // Prioritas: Subtotal Pesanan (sudah termasuk diskon seller) > Harga Setelah Diskon > Total Pembayaran
             // CRM Meta: GROSS = harga kotor sebelum ongkir, NET = setelah ongkir
             $rawStatus = $this->col($row,['status pesanan','status','order status']) ?? '';
