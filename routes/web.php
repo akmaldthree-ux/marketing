@@ -78,6 +78,8 @@ Route::middleware('auth')->group(function () {
 
         // Admin: hapus semua data transaksi
         Route::post('/admin/clear-reports', [UploadController::class, 'clearReports'])->name('admin.clear-reports');
+        // Admin: jalankan migrasi database (satu kali setup)
+        Route::post('/admin/migrate', [UploadController::class, 'runMigrate'])->name('admin.migrate');
     });
 
     // Template downloads (semua user bisa download)
