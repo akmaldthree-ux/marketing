@@ -204,20 +204,10 @@ class UploadController extends Controller {
             if ($date) { $lastValidDate = $date; } else { $date = $lastValidDate; }
             if (!$date) continue;
 
-            // No. Pesanan: Shopee pakai "no. pesanan" (panjang & unik).
-            // CRM Meta pakai "no resi" — tapi hanya jika terlihat seperti nomor resi asli
-            // (panjang > 5 karakter atau mengandung huruf). Angka pendek seperti "44","57"
-            // adalah kode CS internal, bukan resi unik → fallback ke META-hash.
-            $orderNum=$this->col($row,['no. pesanan','order id','order_id','nomor pesanan','no pesanan']);
+            // No. Pesanan: Shopee pakai "no. pesanan", CRM Meta pakai "no resi" sebagai pengganti.
+            // Jika No Resi kosong (September Meta tidak mengisi), buat ID dari NAMA+TANGGAL+GROSS.
+            $orderNum=$this->col($row,['no. pesanan','order id','order_id','nomor pesanan','no pesanan','no resi']);
             if (!$orderNum) {
-                $resi = $this->col($row,['no resi']) ?? '';
-                // Resi asli: panjang > 5 ATAU mengandung huruf (SPX..., PON..., POS...)
-                if ($resi && (strlen($resi) > 5 || preg_match('/[a-zA-Z]/', $resi))) {
-                    $orderNum = $resi;
-                }
-            }
-            if (!$orderNum) {
-                // Fallback: generate ID dari NAMA+TANGGAL+GROSS (unik per transaksi)
                 $nameForId  = $this->col($row,['nama','nama pembeli','username (pembeli)','buyer']) ?? '';
                 $grossForId = $this->col($row,['gross','subtotal pesanan','total harga produk']) ?? '';
                 if ($nameForId && $date && $grossForId) {
