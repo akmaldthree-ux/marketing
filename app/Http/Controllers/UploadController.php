@@ -174,7 +174,19 @@ class UploadController extends Controller {
             }
         }
 
+        // Deteksi format TikTok: baris kedua (index 1) adalah baris deskripsi kolom
+        // (nilai panjang seperti "Platform unique order ID.", "Current order status.").
+        // Buang setelah header di-shift nanti — tandai dulu.
+        $hasTikTokDescRow = false;
+        if (isset($rawRows[1])) {
+            $vals = array_values($rawRows[1]);
+            $longCount = count(array_filter($vals, fn($v) => strlen((string)$v) > 30));
+            if ($longCount >= 3) $hasTikTokDescRow = true;
+        }
+
         $headerRow=array_shift($rawRows);
+        // TikTok: buang baris deskripsi kolom (tepat setelah header)
+        if ($hasTikTokDescRow) array_shift($rawRows);
         $colKeys=array_keys($headerRow); $headers=array_values($headerRow);
         $rows=[];
         foreach ($rawRows as $raw) {
@@ -216,7 +228,7 @@ class UploadController extends Controller {
             $row=array_change_key_case($row,CASE_LOWER);
 
             // --- Tanggal ---
-            $dateRaw=$this->col($row,['waktu pesanan dibuat','waktu pembayaran dilakukan','order time','tanggal','date','order date','create time','pesanan tanggal']);
+            $dateRaw=$this->col($row,['waktu pesanan dibuat','waktu pembayaran dilakukan','order time','tanggal','date','order date','create time','created time','pesanan tanggal']);
             if ($dateRaw && is_numeric($dateRaw) && (float)$dateRaw > 40000) {
                 $date = $this->excelDate($dateRaw);
             } elseif ($dateRaw) {
@@ -230,7 +242,7 @@ class UploadController extends Controller {
             // Shopee: "no. pesanan" (unik, panjang)
             // CRM Meta: "no resi" hanya valid jika terlihat seperti resi asli (>5 char / ada huruf)
             //           Angka pendek (44, 57) = kode CS internal → fallback ke hash
-            $orderNum=$this->col($row,['no. pesanan','order id','order_id','nomor pesanan','no pesanan']);
+            $orderNum=$this->col($row,['no. pesanan','order id','order_id','nomor pesanan','no pesanan','order number']);
             if (!$orderNum) {
                 $resi = $this->col($row,['no resi']) ?? '';
                 if ($resi && $this->isRealResi($resi)) $orderNum = $resi;
@@ -247,11 +259,12 @@ class UploadController extends Controller {
             $rawStatus = $this->col($row,['status pesanan','status','order status']) ?? '';
             $isCancelled = str_contains(strtolower($rawStatus),'batal') || str_contains(strtolower($rawStatus),'cancel') || str_contains(strtolower($rawStatus),'belum bayar');
             // CRM Meta: GROSS sudah termasuk ongkir, gunakan langsung
-            $gmv = $isCancelled ? 0 : $this->num($this->col($row,['subtotal pesanan','harga setelah diskon','total harga produk','gmv','total pesanan','total pembayaran','total price','price','gross']));
+            // TikTok: pakai "sku subtotal after discount" sebagai GMV (harga setelah semua diskon, tanpa ongkir)
+            $gmv = $isCancelled ? 0 : $this->num($this->col($row,['sku subtotal after discount','subtotal pesanan','harga setelah diskon','total harga produk','gmv','total pesanan','total pembayaran','total price','price','gross']));
             $qty    =(int)($this->num($this->col($row,['jumlah','qty','quantity','jumlah produk di pesan']))?:1);
-            $sku    =$this->col($row,['sku induk','nomor referensi sku','sku','product sku','kode sku produk'])??'-';
+            $sku    =$this->col($row,['seller sku','sku induk','nomor referensi sku','sku','product sku','kode sku produk'])??'-';
             $name   =$this->col($row,['nama produk','product name','nama barang','item name'])??'-';
-            $buyer  =$this->col($row,['username (pembeli)','buyer','username','buyer username','nama pembeli','nama'])?? 'unknown';
+            $buyer  =$this->col($row,['buyer username','username (pembeli)','buyer','username','nama pembeli','nama'])?? 'unknown';
             $status =$this->mapStatus($rawStatus ?: 'complete');
             // Cek apakah order_number sudah ada
             $existing = Order::where('order_number',$orderNum)->first();
@@ -377,8 +390,10 @@ class UploadController extends Controller {
         if (str_contains($r,'retur')||str_contains($r,'return')) return 'returned';
         if (str_contains($r,'refund')) return 'refunded';
         if (str_contains($r,'kirim')||str_contains($r,'shipped')||str_contains($r,'shipping')||str_contains($r,'pengiriman')) return 'shipped';
-        // Shopee: "Perlu Dikirim" = siap dikemas/dikirim
+        // TikTok/Shopee: "Perlu Dikirim" = siap dikemas/dikirim
         if (str_contains($r,'perlu dikirim')) return 'processing';
+        // TikTok: "Dibatalkan"
+        if (str_contains($r,'dibatalkan')) return 'cancelled';
         if (str_contains($r,'proses')||str_contains($r,'process')||str_contains($r,'packing')||str_contains($r,'dikemas')) return 'processing';
         // Shopee: "Belum Bayar" = pending, jangan dihitung GMV
         if (str_contains($r,'belum bayar')||str_contains($r,'unpaid')||str_contains($r,'pending')) return 'cancelled';
