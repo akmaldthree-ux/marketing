@@ -55,12 +55,37 @@ class UploadController extends Controller {
         }
     }
     public function destroy(UploadLog $log) {
-        // Hapus data yang terkait dengan upload ini
         $deleted = 0;
+
+        // Coba hapus berdasarkan upload_log_id (untuk upload baru yang sudah ter-track)
         $deleted += DB::table('orders')->where('upload_log_id', $log->id)->delete();
         $deleted += DB::table('ads_performance')->where('upload_log_id', $log->id)->delete();
         $deleted += DB::table('store_metrics')->where('upload_log_id', $log->id)->delete();
         $deleted += DB::table('financials')->where('upload_log_id', $log->id)->delete();
+
+        // Fallback: jika tidak ada yang terhapus (upload lama, upload_log_id = null),
+        // hapus berdasarkan store_id + tanggal upload (dalam jangka waktu proses upload)
+        if ($deleted === 0 && $log->rows_imported > 0) {
+            $from = $log->uploaded_at ?? $log->created_at;
+            $to   = $from->copy()->addMinutes(10);
+            $deleted += DB::table('orders')
+                ->where('store_id', $log->store_id)
+                ->whereBetween('created_at', [$from, $to])
+                ->delete();
+            $deleted += DB::table('ads_performance')
+                ->where('store_id', $log->store_id)
+                ->whereBetween('created_at', [$from, $to])
+                ->delete();
+            $deleted += DB::table('store_metrics')
+                ->where('store_id', $log->store_id)
+                ->whereBetween('created_at', [$from, $to])
+                ->delete();
+            $deleted += DB::table('financials')
+                ->where('store_id', $log->store_id)
+                ->whereBetween('created_at', [$from, $to])
+                ->delete();
+        }
+
         $log->delete();
         return back()->with('success', "File \"{$log->filename}\" dan {$deleted} baris data berhasil dihapus.");
     }
