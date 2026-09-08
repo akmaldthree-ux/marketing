@@ -139,6 +139,18 @@ class UploadController extends Controller {
             if (!empty($cells)) $rawRows[]=$cells;
         }
         if (empty($rawRows)) return [];
+
+        // Deteksi format CRM Meta: baris pertama berisi angka (summary row),
+        // baris kedua berisi header sesungguhnya (ada kolom GROSS / No Resi / PESANAN TANGGAL)
+        $firstRowValues = array_values($rawRows[0]);
+        $secondRowValues = isset($rawRows[1]) ? array_map('strtolower', array_values($rawRows[1])) : [];
+        $isCrmMeta = (isset($rawRows[1]))
+            && (in_array('gross', $secondRowValues) || in_array('no resi', $secondRowValues) || in_array('pesanan tanggal', $secondRowValues))
+            && !in_array('gross', array_map('strtolower', $firstRowValues));
+        if ($isCrmMeta) {
+            array_shift($rawRows); // buang baris summary
+        }
+
         $headerRow=array_shift($rawRows);
         $colKeys=array_keys($headerRow); $headers=array_values($headerRow);
         $rows=[];
@@ -148,6 +160,19 @@ class UploadController extends Controller {
             $rows[]=$mapped;
         }
         return $rows;
+    }
+
+    /**
+     * Konversi Excel serial date (misal: 46113) ke string tanggal YYYY-MM-DD.
+     * Excel epoch: 1 Jan 1900 = serial 1 (dengan bug leap year 1900 di Excel).
+     */
+    private function excelDateToString(string $val): ?string {
+        $serial = (float) $val;
+        if ($serial < 1 || $serial > 100000) return null; // bukan serial date
+        // Excel serial: hari sejak 1 Jan 1900, dengan offset 2 (bug leap 1900 + 0-based)
+        $unix = ($serial - 25569) * 86400;
+        try { return Carbon::createFromTimestamp((int)$unix)->toDateString(); }
+        catch (\Exception $e) { return null; }
     }
 
     private function processRows(array $rows, string $type, int $storeId, int $logId = 0): int {
@@ -165,19 +190,27 @@ class UploadController extends Controller {
         $count=0;
         foreach ($rows as $row) {
             $row=array_change_key_case($row,CASE_LOWER);
-            $orderNum=$this->col($row,['no. pesanan','order id','order_id','nomor pesanan','no pesanan']);
+            // No. Pesanan: Shopee pakai "no. pesanan", CRM Meta pakai "no resi" sebagai pengganti
+            $orderNum=$this->col($row,['no. pesanan','order id','order_id','nomor pesanan','no pesanan','no resi']);
             if (!$orderNum) continue;
-            $dateRaw=$this->col($row,['waktu pesanan dibuat','waktu pembayaran dilakukan','order time','tanggal','date','order date','create time']);
+            $dateRaw=$this->col($row,['waktu pesanan dibuat','waktu pembayaran dilakukan','order time','tanggal','date','order date','create time','pesanan tanggal']);
             if (!$dateRaw) continue;
-            try { $date=Carbon::parse($dateRaw)->toDateString(); } catch(\Exception $e){ continue; }
+            // Handle Excel serial date (misal: 46113.0) dari CRM Meta
+            if (is_numeric($dateRaw) && (float)$dateRaw > 40000) {
+                $date = $this->excelDateToString($dateRaw);
+                if (!$date) continue;
+            } else {
+                try { $date=Carbon::parse($dateRaw)->toDateString(); } catch(\Exception $e){ continue; }
+            }
             // Prioritas: Subtotal Pesanan (sudah termasuk diskon seller) > Harga Setelah Diskon > Total Pembayaran
+            // CRM Meta: GROSS = harga kotor sebelum ongkir, NET = setelah ongkir
             $rawStatus = $this->col($row,['status pesanan','status','order status']) ?? '';
             $isCancelled = str_contains(strtolower($rawStatus),'batal') || str_contains(strtolower($rawStatus),'cancel') || str_contains(strtolower($rawStatus),'belum bayar');
-            $gmv = $isCancelled ? 0 : $this->num($this->col($row,['subtotal pesanan','harga setelah diskon','total harga produk','gmv','total pesanan','total pembayaran','total price','price']));
+            $gmv = $isCancelled ? 0 : $this->num($this->col($row,['subtotal pesanan','harga setelah diskon','total harga produk','gmv','total pesanan','total pembayaran','total price','price','gross']));
             $qty    =(int)($this->num($this->col($row,['jumlah','qty','quantity','jumlah produk di pesan']))?:1);
-            $sku    =$this->col($row,['sku induk','nomor referensi sku','sku','product sku'])??'-';
+            $sku    =$this->col($row,['sku induk','nomor referensi sku','sku','product sku','kode sku produk'])??'-';
             $name   =$this->col($row,['nama produk','product name','nama barang','item name'])??'-';
-            $buyer  =$this->col($row,['username (pembeli)','buyer','username','buyer username','nama pembeli'])?? 'unknown';
+            $buyer  =$this->col($row,['username (pembeli)','buyer','username','buyer username','nama pembeli','nama'])?? 'unknown';
             $status =$this->mapStatus($this->col($row,['status pesanan','status','order status'])?? 'complete');
             // Cek apakah order_number sudah ada (1 order bisa punya banyak produk di Shopee)
             $existing = Order::where('order_number',$orderNum)->first();
@@ -295,7 +328,7 @@ class UploadController extends Controller {
         if (str_contains($r,'pesanan diterima')) return 'complete';
         if (str_contains($r,'selesai')||str_contains($r,'complete')||str_contains($r,'delivered')||str_contains($r,'completed')) return 'complete';
         // Shopee: "Telah Dikirim", "Sedang Dikirim"
-        if (str_contains($r,'telah dikirim')||str_contains($r,'sedang dikirim')) return 'shipped';
+        if (str_contains($r,'telah dikirim')||str_contains($r,'sedang dikirim')||$r==='terkirim') return 'shipped';
         if (str_contains($r,'batal')||str_contains($r,'cancel')) return 'cancelled';
         if (str_contains($r,'retur')||str_contains($r,'return')) return 'returned';
         if (str_contains($r,'refund')) return 'refunded';
