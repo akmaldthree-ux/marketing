@@ -117,7 +117,7 @@ class UploadController extends Controller {
     private function parseXlsx(string $path): array {
         $zip = new \ZipArchive();
         if ($zip->open($path)!==true) throw new \RuntimeException('File XLSX tidak valid.');
-        // Build shared strings table (standard format)
+        // Build shared strings table
         $shared = [];
         if ($ss=$zip->getFromName('xl/sharedStrings.xml')) {
             preg_match_all('/<si>(.*?)<\/si>/s',$ss,$siM);
@@ -126,7 +126,7 @@ class UploadController extends Controller {
                 $shared[]=html_entity_decode(implode('',$tM[1]),ENT_XML1,'UTF-8');
             }
         }
-        // Find first sheet (prefer sheet1, fallback to any sheet)
+        // Find first sheet (lowest numbered)
         $sheetXml=null; $sheetName=null;
         for ($i=0;$i<$zip->numFiles;$i++) {
             $name=$zip->getNameIndex($i);
@@ -138,32 +138,35 @@ class UploadController extends Controller {
         }
         $zip->close();
         if (!$sheetXml) throw new \RuntimeException('Sheet tidak ditemukan dalam file XLSX.');
-        $rawRows=[];
-        preg_match_all('/<row[^>]*>(.*?)<\/row>/s',$sheetXml,$rowM);
-        foreach ($rowM[1] as $rowContent) {
-            $cells=[];
-            preg_match_all('/<c\s([^>]*)>(.*?)<\/c>/s',$rowContent,$cellM,PREG_SET_ORDER);
-            foreach ($cellM as $cell) {
-                preg_match('/r="([^"]+)"/',$cell[1],$rM);
-                preg_match('/t="([^"]+)"/',$cell[1],$tM);
-                $col=preg_replace('/[0-9]/','', $rM[1]??'');
-                $type=$tM[1]??'';
-                // inlineStr: <is><t>value</t></is>
-                if ($type==='inlineStr'||$type==='str') {
-                    preg_match('/<t[^>]*>(.*?)<\/t>/s',$cell[2],$isM);
-                    $val=html_entity_decode($isM[1]??'',ENT_XML1,'UTF-8');
-                } elseif ($type==='s') {
-                    preg_match('/<v>(.*?)<\/v>/s',$cell[2],$vM);
-                    $val=$shared[(int)($vM[1]??0)]??'';
-                } else {
-                    preg_match('/<v>(.*?)<\/v>/s',$cell[2],$vM);
-                    $val=$vM[1]??'';
-                }
-                if ($col!=='') $cells[$col]=trim($val);
+
+        // Parse semua cell secara individual (mendukung format TikTok yang
+        // setiap cell ada di <row> terpisah, maupun format standar).
+        // Kunci: referensi cell (misal "A1", "B3") → grouping per nomor baris.
+        $cellsByRow = []; // [rowNum => [colLetter => value]]
+        preg_match_all('/<c\s([^>]*)>(.*?)<\/c>/s',$sheetXml,$cellM,PREG_SET_ORDER);
+        foreach ($cellM as $cell) {
+            preg_match('/r="([^"]+)"/',$cell[1],$rM);
+            preg_match('/t="([^"]+)"/',$cell[1],$tM);
+            $ref  = $rM[1]??'';
+            $col  = preg_replace('/[0-9]/','', $ref);   // misal "A", "BQ"
+            $rowN = (int) preg_replace('/[^0-9]/','', $ref); // misal 1, 42
+            if ($col===''||$rowN===0) continue;
+            $type = $tM[1]??'';
+            if ($type==='inlineStr'||$type==='str') {
+                preg_match('/<t[^>]*>(.*?)<\/t>/s',$cell[2],$isM);
+                $val=html_entity_decode($isM[1]??'',ENT_XML1,'UTF-8');
+            } elseif ($type==='s') {
+                preg_match('/<v>(.*?)<\/v>/s',$cell[2],$vM);
+                $val=$shared[(int)($vM[1]??0)]??'';
+            } else {
+                preg_match('/<v>(.*?)<\/v>/s',$cell[2],$vM);
+                $val=$vM[1]??'';
             }
-            if (!empty($cells)) $rawRows[]=$cells;
+            $cellsByRow[$rowN][$col]=trim($val);
         }
-        if (empty($rawRows)) return [];
+        if (empty($cellsByRow)) return [];
+        ksort($cellsByRow);
+        $rawRows = array_values($cellsByRow);
 
         // Deteksi format CRM Meta: baris pertama adalah summary (angka semua),
         // baris kedua adalah header sesungguhnya (ada "PESANAN TANGGAL" atau "GROSS").
@@ -174,9 +177,8 @@ class UploadController extends Controller {
             }
         }
 
-        // Deteksi format TikTok: baris kedua (index 1) adalah baris deskripsi kolom
+        // Deteksi format TikTok: baris kedua adalah baris deskripsi kolom
         // (nilai panjang seperti "Platform unique order ID.", "Current order status.").
-        // Buang setelah header di-shift nanti — tandai dulu.
         $hasTikTokDescRow = false;
         if (isset($rawRows[1])) {
             $vals = array_values($rawRows[1]);
