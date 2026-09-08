@@ -190,8 +190,17 @@ class UploadController extends Controller {
         $count=0;
         foreach ($rows as $row) {
             $row=array_change_key_case($row,CASE_LOWER);
-            // No. Pesanan: Shopee pakai "no. pesanan", CRM Meta pakai "no resi" sebagai pengganti
+            // No. Pesanan: Shopee pakai "no. pesanan", CRM Meta pakai "no resi" sebagai pengganti.
+            // Jika No Resi kosong (September Meta tidak mengisi), buat ID dari NAMA+TANGGAL+GROSS.
             $orderNum=$this->col($row,['no. pesanan','order id','order_id','nomor pesanan','no pesanan','no resi']);
+            if (!$orderNum) {
+                $nameForId  = $this->col($row,['nama','nama pembeli','username (pembeli)','buyer']) ?? '';
+                $grossForId = $this->col($row,['gross','subtotal pesanan','total harga produk']) ?? '';
+                $dateForId  = $this->col($row,['pesanan tanggal','waktu pesanan dibuat','tanggal','date']) ?? '';
+                if ($nameForId && $dateForId && $grossForId) {
+                    $orderNum = 'META-'.md5($nameForId.'|'.$dateForId.'|'.$grossForId);
+                }
+            }
             if (!$orderNum) continue;
             $dateRaw=$this->col($row,['waktu pesanan dibuat','waktu pembayaran dilakukan','order time','tanggal','date','order date','create time','pesanan tanggal']);
             if (!$dateRaw) continue;
@@ -323,6 +332,8 @@ class UploadController extends Controller {
         return (float)preg_replace('/[^0-9.\-]/','',str_replace(',','.',$v));
     }
     private function mapStatus(string $raw): string {
+        // Status berisi angka murni (kode internal CS di CRM Meta) → anggap terkirim
+        if (is_numeric(trim($raw))) return 'shipped';
         $r=strtolower(trim($raw));
         // Shopee: "Pesanan diterima, namun Pembeli masih dapat mengajukan pengembalian hingga ..."
         if (str_contains($r,'pesanan diterima')) return 'complete';
