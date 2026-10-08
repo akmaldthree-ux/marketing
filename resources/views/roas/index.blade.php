@@ -5,7 +5,7 @@
 <x-date-range-filter :date-from="$dateFrom" :date-to="$dateTo">
   <select name="platform" class="form-select form-select-sm" style="width:160px;border-radius:var(--rounded-full)">
     <option value="all" {{ $platform==='all'?'selected':'' }}>Semua Platform</option>
-    @foreach(['Shopee','TikTok Shop','Meta Ads'] as $p)<option value="{{ $p }}" {{ $platform===$p?'selected':'' }}>{{ $p }}</option>@endforeach
+    @foreach($platforms as $p)<option value="{{ $p }}" {{ $platform===$p?'selected':'' }}>{{ $p }}</option>@endforeach
   </select>
 </x-date-range-filter>
 

@@ -39,7 +39,9 @@ class CustomerController extends Controller {
             ->when($platform !== 'all', fn($q) => $q->where('platform', $platform))
             ->orderByDesc('total_orders')->limit(20)->get();
 
-        return view('customers.index', compact('newCustomers', 'returningCustomers', 'repeatRate', 'topCustomers', 'platform', 'trendMonths', 'dateFrom', 'dateTo'));
+        $platforms = Store::PLATFORMS;
+
+        return view('customers.index', compact('newCustomers', 'returningCustomers', 'repeatRate', 'topCustomers', 'platform', 'platforms', 'trendMonths', 'dateFrom', 'dateTo'));
     }
 
     private function dateRange(Request $request): array {

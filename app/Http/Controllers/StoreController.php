@@ -2,17 +2,19 @@
 namespace App\Http\Controllers;
 use App\Models\{Store, Pic};
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 class StoreController extends Controller {
     public function index() {
         $stores = Store::with('pic')->orderBy('brand')->orderBy('name')->get();
         $pics = Pic::where('is_active', true)->get();
-        return view('stores.index', compact('stores', 'pics'));
+        $platforms = Store::PLATFORMS;
+        return view('stores.index', compact('stores', 'pics', 'platforms'));
     }
     public function store(Request $request) {
         $data = $request->validate([
             'name'         => 'required|string|max:100',
             'brand'        => 'required|in:DTHREE,HURIM,ASFARA',
-            'platform'     => 'required|in:Shopee,TikTok Shop,Meta Ads',
+            'platform'     => ['required', Rule::in(Store::PLATFORMS)],
             'channel_type' => 'required|in:marketplace,non_marketplace',
             'pic_id'       => 'nullable|exists:pics,id',
             'is_active'    => 'boolean',
@@ -29,7 +31,7 @@ class StoreController extends Controller {
         $data = $request->validate([
             'name'         => 'required|string|max:100',
             'brand'        => 'required|in:DTHREE,HURIM,ASFARA',
-            'platform'     => 'required|in:Shopee,TikTok Shop,Meta Ads',
+            'platform'     => ['required', Rule::in(Store::PLATFORMS)],
             'channel_type' => 'required|in:marketplace,non_marketplace',
             'pic_id'       => 'nullable|exists:pics,id',
             'is_active'    => 'boolean',

@@ -2,6 +2,15 @@
 namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 class Store extends Model {
+    public const PLATFORMS = [
+        'Shopee',
+        'TikTok Shop',
+        'Meta Ads',
+        'Lazada',
+        'Blibli',
+        'Tokopedia',
+    ];
+
     protected $fillable = ['name','brand','platform','channel_type','pic_id','is_active'];
     public function pic() { return $this->belongsTo(Pic::class); }
     public function orders() { return $this->hasMany(Order::class); }

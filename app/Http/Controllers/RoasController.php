@@ -30,7 +30,9 @@ class RoasController extends Controller {
         $totalGmv   = $records->sum('gmv_from_ads');
         $blendedRoas= $totalSpend > 0 ? round($totalGmv/$totalSpend,2) : 0;
 
-        return view('roas.index', compact('byStore','totalSpend','totalGmv','blendedRoas','platform','dateFrom','dateTo'));
+        $platforms = Store::PLATFORMS;
+
+        return view('roas.index', compact('byStore','totalSpend','totalGmv','blendedRoas','platform','platforms','dateFrom','dateTo'));
     }
 
     private function dateRange(Request $request): array {

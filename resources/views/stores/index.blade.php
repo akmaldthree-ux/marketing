@@ -40,7 +40,7 @@
               </div>
               <div class="col"><label class="form-label small">Platform</label>
                 <select name="platform" class="form-select form-select-sm" required>
-                  @foreach(['Shopee','TikTok Shop','Meta Ads'] as $p)<option value="{{ $p }}" {{ $store->platform==$p?'selected':'' }}>{{ $p }}</option>@endforeach
+                  @foreach($platforms as $p)<option value="{{ $p }}" {{ $store->platform==$p?'selected':'' }}>{{ $p }}</option>@endforeach
                 </select>
               </div>
             </div>
@@ -87,7 +87,7 @@
         <div class="col"><label class="form-label small">Platform</label>
           <select name="platform" class="form-select form-select-sm" required>
             <option value="">Pilih...</option>
-            @foreach(['Shopee','TikTok Shop','Meta Ads'] as $p)<option value="{{ $p }}">{{ $p }}</option>@endforeach
+            @foreach($platforms as $p)<option value="{{ $p }}">{{ $p }}</option>@endforeach
           </select>
         </div>
       </div>
